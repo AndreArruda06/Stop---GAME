@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Escolher modo | STOP!</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/escolher-modo.css">
+  <script src="../js/escolher-modo.js" defer></script>
+</head>
+<body>
+  <div class="pagina">
+    <header class="cabecalho">
+      <a href="index.html" class="marca" aria-label="STOP! - Voltar ao início">
+        <span class="logo">STOP!</span><span class="ponto">•</span><span class="sublogo">O DESAFIO DAS PALAVRAS</span>
+      </a>
+      <span class="selo">FEITO PARA JUNTAR A TURMA</span>
+    </header>
+
+    <main class="conteudo">
+      <div class="intro">
+        <p class="sobretitulo">CADA TURMA TEM SEU JEITO</p>
+        <h1>Como a turma vai jogar?</h1>
+        <p class="descricao">Escolha como enviar suas respostas.</p>
+      </div>
+
+      <section class="modos" aria-label="Escolha o modo de jogo">
+        <article class="cartao">
+          <div class="icone-quadro">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="11" y="4" width="10" height="18" rx="5"/><path d="M7 15v3a9 9 0 0 0 18 0v-3M16 27v3M11 30h10"/></svg>
+          </div>
+          <p class="categoria">EM VOZ ALTA</p>
+          <h2>COM CALL</h2>
+          <p class="texto-cartao">Fale suas respostas em uma chamada com a turma.</p>
+          <button class="botao-modo" data-modo="com-call">ESCOLHER MODO <span aria-hidden="true">➜</span></button>
+        </article>
+
+        <article class="cartao">
+          <div class="icone-quadro">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="26" height="18" rx="3"/><path d="M8 12h1m4 0h1m4 0h1m4 0h1M8 17h1m4 0h1m4 0h1m4 0h1M10 21h12"/></svg>
+          </div>
+          <p class="categoria">POR ESCRITO</p>
+          <h2>SEM CALL</h2>
+          <p class="texto-cartao">Digite suas respostas e jogue sem usar o microfone.</p>
+          <button class="botao-modo" data-modo="sem-call">ESCOLHER MODO <span aria-hidden="true">➜</span></button>
+        </article>
+      </section>
+
+      <a href="index.html" class="botao-voltar"><span aria-hidden="true">←</span> VOLTAR</a>
+    </main>
+
+    <footer>Uma letra. Mil possibilidades.</footer>
+  </div>
+</body>
+</html>

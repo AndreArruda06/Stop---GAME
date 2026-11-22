@@ -254,6 +254,7 @@ button { -webkit-tap-highlight-color: transparent; }
   font-weight: 1000;
   line-height: 1;
   text-align: left;
+  text-decoration: none;
   transition: transform .16s ease, filter .16s ease, background-color .16s ease;
 }
 .action-button:hover { filter: brightness(1.035); transform: translateY(-2px); }

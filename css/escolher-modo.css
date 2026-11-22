@@ -1,0 +1,333 @@
+
+/* ========================================
+   CORES PRINCIPAIS DO PROJETO
+======================================== */
+
+:root {
+    --azul: #1e68b1;
+    --azul-escuro: #104d8b;
+    --creme: #fff6df;
+    --amarelo: #ffda3b;
+    --texto: #114f91;
+}
+
+/* ========================================
+   CONFIGURAÇÕES GERAIS
+======================================== */
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    min-height: 100%;
+}
+
+body {
+    background: var(--azul);
+    color: var(--creme);
+    font-family: 'Nunito', sans-serif;
+}
+
+.pagina {
+    min-height: 100vh;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ========================================
+   CABEÇALHO
+======================================== */
+
+.cabecalho {
+    height: 87px;
+    padding: 28px 29px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.marca {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    text-decoration: none;
+    color: var(--creme);
+    white-space: nowrap;
+}
+
+.logo {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.ponto {
+    color: var(--amarelo);
+    font-size: 14px;
+}
+
+.sublogo {
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 0.05px;
+}
+
+.selo {
+    font-size: 8px;
+    font-weight: 900;
+    background: #14538f;
+    border-radius: 20px;
+    padding: 8px 13px;
+    line-height: 1;
+}
+
+/* ========================================
+   CONTEÚDO CENTRAL
+======================================== */
+
+.conteudo {
+    width: 100%;
+    max-width: 990px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 58px 20px 0;
+}
+
+.intro {
+    text-align: center;
+}
+
+.sobretitulo {
+    color: var(--amarelo);
+    font-size: 9px;
+    font-weight: 900;
+    margin: 0 0 10px;
+}
+
+h1 {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1.15;
+    margin: 0;
+}
+
+.descricao {
+    font-size: 13px;
+    margin: 8px 0 0;
+}
+
+/* ========================================
+   ÁREA DOS MODOS DE JOGO
+======================================== */
+
+.modos {
+    display: grid;
+    grid-template-columns: repeat(2, 278px);
+    gap: 19px;
+    margin-top: 24px;
+}
+
+/* ========================================
+   CARTÕES COM CALL / SEM CALL
+======================================== */
+
+.cartao {
+    height: 259px;
+    border-radius: 22px 22px 17px 17px;
+    background: var(--creme);
+    color: var(--texto);
+    padding: 23px;
+    box-shadow: 0 4px 0 #dfc899;
+
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+/* Quadrado amarelo dos ícones */
+
+.icone-quadro {
+    height: 59px;
+    width: 57px;
+    border-radius: 17px;
+    background: var(--amarelo);
+    box-shadow: 0 2px 0 #c9a921;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icone-quadro svg {
+    width: 29px;
+    height: 29px;
+    color: #064b87;
+}
+
+/* Categoria acima do título */
+
+.categoria {
+    font-size: 9px;
+    font-weight: 900;
+    margin: 14px 0 4px;
+}
+
+/* Títulos COM CALL e SEM CALL */
+
+h2 {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+    margin: 0;
+}
+
+/* Descrição de cada modo */
+
+.texto-cartao {
+    font-size: 12.5px;
+    line-height: 1.4;
+    margin: 7px 0 0;
+    min-height: 40px;
+}
+
+/* ========================================
+   BOTÕES ESCOLHER MODO
+======================================== */
+
+.botao-modo {
+    margin-top: auto;
+    background: var(--azul);
+    color: #fff;
+    border: 0;
+    border-radius: 12px;
+    width: 100%;
+    height: 36px;
+    min-height: 36px;
+    padding: 0 13px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    font-family: inherit;
+    font-size: 9px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.botao-modo span {
+    font-size: 20px;
+    font-weight: 400;
+    line-height: 1;
+}
+
+.botao-modo:hover {
+    background: var(--azul-escuro);
+}
+
+/* ========================================
+   BOTÃO VOLTAR
+======================================== */
+
+.botao-voltar {
+    margin-top: 27px;
+    min-width: 110px;
+    height: 40px;
+    padding: 0 18px;
+
+    background: #10518f;
+    color: #fff;
+    border: 1px solid #4080b6;
+    border-radius: 13px;
+    box-shadow: 0 3px 0 #0b3d6c;
+
+    display: flex;
+    gap: 13px;
+    align-items: center;
+    justify-content: center;
+
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: 900;
+}
+
+.botao-voltar span {
+    font-size: 20px;
+    font-weight: 400;
+}
+
+.botao-voltar:hover {
+    background: #0b447b;
+}
+
+/* ========================================
+   RODAPÉ
+======================================== */
+
+footer {
+    margin-top: auto;
+    text-align: center;
+    padding: 24px 10px 22px;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+/* ========================================
+   RESPONSIVIDADE PARA CELULARES
+======================================== */
+
+@media (max-width: 580px) {
+
+    .cabecalho {
+        padding: 20px 16px 0;
+        height: 75px;
+    }
+
+    .logo {
+        font-size: 25px;
+    }
+
+    .sublogo {
+        font-size: 7px;
+    }
+
+    .selo {
+        font-size: 6px;
+        padding: 7px;
+    }
+
+    .conteudo {
+        padding: 48px 16px 0;
+    }
+
+    h1 {
+        font-size: 30px;
+    }
+
+    .modos {
+        grid-template-columns: minmax(0, 1fr);
+        width: min(100%, 340px);
+        gap: 18px;
+    }
+
+    .cartao {
+        height: 259px;
+    }
+
+    .botao-voltar {
+        margin-top: 26px;
+    }
+
+    footer {
+        padding-top: 45px;
+    }
+}
