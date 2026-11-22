@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1768b5">
+  <meta name="description" content="STOP! — O desafio das palavras. Reúna a turma e solte as palavras.">
+  <title>STOP! — O desafio das palavras</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito+Sans:wght@400;600;700;800;900;1000&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <main class="screen" id="screen">
+    <div class="decorations" aria-hidden="true">
+      <span class="letter letter-a drift drift-slow">A</span>
+      <span class="letter letter-b drift drift-reverse">B</span>
+      <span class="letter letter-c drift drift-wide">C</span>
+      <span class="letter letter-z drift drift-slow">Z</span>
+
+      <i class="ring ring-one drift drift-reverse"></i>
+      <i class="ring ring-two drift drift-slow"></i>
+      <i class="ring ring-three drift drift-wide"></i>
+      <i class="ring ring-four drift drift-reverse"></i>
+      <i class="ring ring-five drift drift-slow"></i>
+
+      <i class="confetti confetti-one"></i>
+      <i class="confetti confetti-two"></i>
+      <i class="confetti confetti-three"></i>
+      <i class="confetti confetti-four"></i>
+      <i class="confetti confetti-five"></i>
+      <i class="confetti confetti-six"></i>
+      <i class="confetti confetti-seven"></i>
+      <i class="confetti confetti-eight"></i>
+      <i class="confetti confetti-nine"></i>
+      <i class="confetti confetti-ten"></i>
+      <i class="confetti confetti-eleven"></i>
+      <i class="confetti confetti-twelve"></i>
+      <i class="confetti confetti-thirteen"></i>
+      <i class="confetti confetti-fourteen"></i>
+      <i class="confetti confetti-fifteen"></i>
+      <i class="confetti confetti-sixteen"></i>
+      <i class="confetti confetti-seventeen"></i>
+      <i class="confetti confetti-eighteen"></i>
+    </div>
+
+    <header class="topbar">
+      <a class="mini-brand" href="#inicio" aria-label="STOP! — início">
+        <span class="mini-brand-name">STOP!</span>
+        <span class="mini-brand-dot"></span>
+        <span class="mini-brand-caption">O DESAFIO DAS PALAVRAS</span>
+      </a>
+      <span class="top-pill">FEITO PARA JUNTAR A TURMA</span>
+    </header>
+
+    <section class="hero" id="inicio" aria-labelledby="main-title">
+      <div class="eyebrow">O CLÁSSICO DA SUA TURMA</div>
+
+      <h1 class="logo" id="main-title" aria-label="STOP!">
+        <span class="logo-letters">STOP</span><span class="logo-bang">!</span>
+      </h1>
+
+      <p class="hero-kicker">O DESAFIO DAS PALAVRAS</p>
+      <p class="hero-description">Reúna a turma. Solte as palavras.</p>
+
+      <nav class="main-actions" aria-label="Menu principal">
+        <button class="action-button action-primary" id="play-button" type="button">
+          <span class="button-icon play-icon" aria-hidden="true"></span>
+          <span>JOGAR</span>
+          <span class="button-arrow" aria-hidden="true">→</span>
+        </button>
+
+        <button class="action-button action-secondary" id="how-button" type="button">
+          <span class="button-icon help-icon" aria-hidden="true">?</span>
+          <span>COMO JOGAR</span>
+          <span class="button-arrow" aria-hidden="true">→</span>
+        </button>
+
+        <button class="action-button action-outline" id="settings-button" type="button">
+          <svg class="button-icon settings-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9.7 3.6h4.6l.55 2.05c.48.18.92.43 1.32.75l2.03-.62 2.3 3.98-1.5 1.5c.05.5.05 1 0 1.5l1.5 1.5-2.3 3.98-2.03-.62c-.4.32-.84.57-1.32.75l-.55 2.05H9.7l-.55-2.05a6.5 6.5 0 0 1-1.32-.75l-2.03.62-2.3-3.98 1.5-1.5a7.5 7.5 0 0 1 0-1.5l-1.5-1.5 2.3-3.98 2.03.62c.4-.32.84-.57 1.32-.75L9.7 3.6Z" />
+            <circle cx="12" cy="12" r="2.7" />
+          </svg>
+          <span>CONFIGURAÇÕES</span>
+          <span class="button-arrow" aria-hidden="true">→</span>
+        </button>
+      </nav>
+    </section>
+
+    <p class="footer-note">O bom e velho Stop, de um jeito novo.</p>
+    <p class="bottom-note">Uma letra. Mil possibilidades.</p>
+
+    <dialog class="modal" id="play-modal" aria-labelledby="play-modal-title">
+      <form method="dialog" class="modal-card" id="play-form">
+        <button class="modal-close" aria-label="Fechar" value="close" type="submit">×</button>
+        <span class="modal-label">VAMOS COMEÇAR?</span>
+        <h2 id="play-modal-title">Preparado para jogar?</h2>
+        <p>Essa é a sua área de entrada. Aqui você pode conectar a criação de salas e o sistema multiplayer do seu jogo.</p>
+        <label class="field-label" for="player-name">Seu nome</label>
+        <input class="text-field" id="player-name" name="playerName" type="text" maxlength="18" placeholder="Como quer ser chamado?" autocomplete="nickname">
+        <label class="field-label" for="room-code">Código da sala <span>(opcional)</span></label>
+        <input class="text-field" id="room-code" name="roomCode" type="text" maxlength="8" placeholder="Ex.: STOP123" autocomplete="off">
+        <button class="modal-submit" id="continue-button" type="button">CONTINUAR <span>→</span></button>
+        <p class="form-feedback" id="play-feedback" aria-live="polite"></p>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="how-modal" aria-labelledby="how-modal-title">
+      <form method="dialog" class="modal-card">
+        <button class="modal-close" aria-label="Fechar" value="close" type="submit">×</button>
+        <span class="modal-label">É FÁCIL, É RÁPIDO, É STOP!</span>
+        <h2 id="how-modal-title">Como jogar</h2>
+        <ol class="rules-list">
+          <li><b>Reúna a turma.</b> Crie uma sala e convide seus amigos.</li>
+          <li><b>Uma letra é sorteada.</b> Todo mundo joga com a mesma letra.</li>
+          <li><b>Pense rápido.</b> Preencha as categorias com palavras que comecem com ela.</li>
+          <li><b>Deu STOP!</b> Quem terminar primeiro encerra a rodada. Depois é hora de conferir as respostas e somar pontos.</li>
+        </ol>
+        <button class="modal-submit" value="close" type="submit">ENTENDI <span>→</span></button>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="settings-modal" aria-labelledby="settings-modal-title">
+      <form method="dialog" class="modal-card">
+        <button class="modal-close" aria-label="Fechar" value="close" type="submit">×</button>
+        <span class="modal-label">DO SEU JEITO</span>
+        <h2 id="settings-modal-title">Configurações</h2>
+        <label class="setting-row" for="motion-toggle">
+          <span><b>Animações do fundo</b><small>Movimento das letras e formas decorativas.</small></span>
+          <input id="motion-toggle" type="checkbox" checked>
+        </label>
+        <label class="setting-row" for="sound-toggle">
+          <span><b>Efeitos sonoros</b><small>Ative quando os sons do jogo estiverem disponíveis.</small></span>
+          <input id="sound-toggle" type="checkbox">
+        </label>
+        <button class="modal-submit" value="close" type="submit">SALVAR <span>→</span></button>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </main>
+</body>
+</html>
