@@ -21,6 +21,10 @@
 
     const stopButton = $('stop-button');
 
+    const timerCard = $('timer-card');
+    const timerDisplay = $('timer');
+    const turnIndicator = $('turn-indicator');
+
     // ========================================
     // CAPTURA ESTÁTICA DO FUNDO
     // ========================================
@@ -189,7 +193,7 @@
 
         backgroundCaptureTimer = setTimeout(() => {
 
-            if (drawOverlay.hidden) {
+            if (drawOverlay.hidden && !roundStarted) {
 
                 requestBackgroundCapture();
 
@@ -319,6 +323,25 @@
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
     // ========================================
+    // ESTADO DO CRONÔMETRO
+    // ========================================
+
+    // Tempo restante em segundos.
+    let remainingTime = config.time;
+
+    // Identificador do intervalo atual.
+    let timerInterval = null;
+
+    // Momento exato em que o tempo terminará.
+    let timerDeadline = 0;
+
+    // Indica se o cronômetro está em execução.
+    let timerRunning = false;
+
+    // Impede ações depois que o tempo acabar.
+    let timeExpired = false;
+
+    // ========================================
     // EMBARALHAMENTO DO BANCO DE CARTAS
     // ========================================
 
@@ -379,6 +402,9 @@
         renderPlayers();
 
         createWheel();
+
+        // Exibe o cronômetro inicialmente parado.
+        resetTimer();
 
         // Exige pelo menos dois jogadores.
         drawButton.disabled = players.length < 2;
@@ -486,6 +512,12 @@
         // A rodada precisa estar iniciada.
         if (!roundStarted) return;
 
+        // Impede escolhas após o tempo acabar.
+        if (timeExpired) return;
+
+        // Confere o tempo real antes de aceitar a letra.
+        if (!validateTimer()) return;
+
         // Não permite trocar ou cancelar a escolha.
         if (selectedLetter !== null) return;
 
@@ -545,8 +577,10 @@
 
             // Após escolher uma letra,
             // todas ficam bloqueadas até confirmar.
+            // Também bloqueia quando o tempo acabar.
             button.disabled =
                 !roundStarted ||
+                timeExpired ||
                 used ||
                 selectedLetter !== null;
 
@@ -655,6 +689,214 @@
     }
 
     // ========================================
+    // INTERFACE DO CRONÔMETRO
+    // ========================================
+
+    function updateTimerDisplay() {
+
+        const displayValue = String(remainingTime);
+
+        // Evita atualizar o DOM desnecessariamente.
+        if (timerDisplay.textContent !== displayValue) {
+
+            timerDisplay.textContent = displayValue;
+
+        }
+
+        // Amarelo nos últimos cinco segundos.
+        timerCard.classList.toggle(
+            'warning',
+            timerRunning &&
+            remainingTime <= 5 &&
+            remainingTime > 3
+        );
+
+        // Vermelho nos últimos três segundos.
+        timerCard.classList.toggle(
+            'danger',
+            timeExpired ||
+            (
+                timerRunning &&
+                remainingTime <= 3
+            )
+        );
+
+    }
+
+    // ========================================
+    // PARAR O CRONÔMETRO
+    // ========================================
+
+    function stopTimer() {
+
+        // Remove o intervalo existente.
+        if (timerInterval !== null) {
+
+            clearInterval(timerInterval);
+
+            timerInterval = null;
+
+        }
+
+        timerRunning = false;
+
+        timerDeadline = 0;
+
+    }
+
+    // ========================================
+    // RESTAURAR O TEMPO INICIAL
+    // ========================================
+
+    function resetTimer() {
+
+        stopTimer();
+
+        remainingTime = config.time;
+
+        timeExpired = false;
+
+        updateTimerDisplay();
+
+    }
+
+    // ========================================
+    // INICIAR OU REINICIAR A CONTAGEM
+    // ========================================
+
+    function startTimer() {
+
+        // Evita dois cronômetros simultâneos.
+        stopTimer();
+
+        remainingTime = config.time;
+
+        timeExpired = false;
+
+        timerRunning = true;
+
+        // Calcula o momento exato do encerramento.
+        timerDeadline =
+            performance.now() + (config.time * 1000);
+
+        updateTimerDisplay();
+
+        // Verifica o relógio real sem depender do FPS.
+        timerInterval = setInterval(() => {
+
+            updateTimer();
+
+        }, 100);
+
+    }
+
+    // ========================================
+    // ATUALIZAÇÃO DA CONTAGEM REGRESSIVA
+    // ========================================
+
+    function updateTimer() {
+
+        if (!timerRunning) return;
+
+        const millisecondsLeft = Math.max(
+            0,
+            timerDeadline - performance.now()
+        );
+
+        const nextTime = Math.ceil(
+            millisecondsLeft / 1000
+        );
+
+        // Só altera a interface quando o segundo mudar.
+        if (nextTime !== remainingTime) {
+
+            remainingTime = nextTime;
+
+            updateTimerDisplay();
+
+        }
+
+        // Encerra quando chegar a zero.
+        if (millisecondsLeft <= 0) {
+
+            handleTimeExpired();
+
+        }
+
+    }
+
+    // ========================================
+    // VALIDAÇÃO DO TEMPO REAL
+    // ========================================
+
+    function validateTimer() {
+
+        if (timeExpired) return false;
+
+        if (!timerRunning) return false;
+
+        // Impede respostas depois do prazo,
+        // mesmo se o navegador atrasar o intervalo.
+        if (performance.now() >= timerDeadline) {
+
+            handleTimeExpired();
+
+            return false;
+
+        }
+
+        return true;
+
+    }
+
+    // ========================================
+    // TEMPO ESGOTADO
+    // ========================================
+
+    function handleTimeExpired() {
+
+        // Evita executar o encerramento mais de uma vez.
+        if (timeExpired) return;
+
+        timeExpired = true;
+
+        stopTimer();
+
+        remainingTime = 0;
+
+        updateTimerDisplay();
+
+        turnIndicator.textContent =
+            'TEMPO ESGOTADO';
+
+        stopButton.disabled = true;
+
+        $('stop-label').textContent =
+            'TEMPO ESGOTADO';
+
+        // A letra escolhida continua consumida.
+        selectedLetter = null;
+
+        $('selected-letter-box').hidden = true;
+
+        $('selected-letter').textContent = '—';
+
+        updateLetters();
+
+        $('game-status').textContent =
+            `${players[currentPlayerIndex].nickname} ficou sem tempo!`;
+
+        // A eliminação e a troca de jogadores
+        // serão implementadas na próxima etapa.
+
+        console.info(
+            '[STOP!] Tempo esgotado:',
+            players[currentPlayerIndex].nickname
+        );
+
+    }
+
+    // ========================================
     // SORTEIO DA CARTA
     // ========================================
 
@@ -733,6 +975,9 @@
         $('current-theme').textContent =
             currentCard.tema;
 
+        // Prepara o tempo, mas não inicia a contagem.
+        resetTimer();
+
         drawOverlay.classList.add('closing');
 
         const reducedMotion = window.matchMedia(
@@ -763,7 +1008,14 @@
             // Atualiza o fundo em segundo plano para o próximo sorteio.
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
-                    requestBackgroundCapture();
+
+                    // Evita iniciar uma captura durante a contagem.
+                    if (!roundStarted) {
+
+                        requestBackgroundCapture();
+
+                    }
+
                 });
             });
 
@@ -772,13 +1024,17 @@
     }
 
     // ========================================
-    // BOTÃO STOP! — TESTE INICIAL
+    // BOTÃO STOP! — CONTROLE DO CRONÔMETRO
     // ========================================
 
     function handleStop() {
 
         if (!currentCard) return;
 
+        // Impede ações após o tempo esgotar.
+        if (timeExpired) return;
+
+        // Primeiro clique: inicia a rodada.
         if (!roundStarted) {
 
             roundStarted = true;
@@ -789,11 +1045,20 @@
             $('game-status').textContent =
                 'Escolha uma letra livre.';
 
+            turnIndicator.textContent =
+                'SUA VEZ';
+
             updateLetters();
+
+            // Inicia a contagem regressiva.
+            startTimer();
 
             return;
 
         }
+
+        // Confere se o jogador ainda possui tempo.
+        if (!validateTimer()) return;
 
         // Confirmação provisória para testar
         // o bloqueio definitivo das letras.
@@ -803,6 +1068,7 @@
             $('game-status').textContent =
                 'Escolha uma letra primeiro.';
 
+            // Não reinicia o cronômetro sem uma letra.
             return;
 
         }
@@ -820,6 +1086,9 @@
         $('selected-letter').textContent = '—';
 
         updateLetters();
+
+        // Reinicia o cronômetro após confirmar a letra.
+        startTimer();
 
     }
 
@@ -844,6 +1113,11 @@
 
     $('back-button').addEventListener('click', () => {
 
+        // Encerra o cronômetro antes de sair.
+        stopTimer();
+
+        clearTimeout(backgroundCaptureTimer);
+
         // O teste não interfere na sala normal.
         if (modoTeste) {
 
@@ -860,6 +1134,17 @@
     $('answer-form').addEventListener('submit', (event) => {
 
         event.preventDefault();
+
+    });
+
+    // Confere o tempo ao retornar para a aba.
+    document.addEventListener('visibilitychange', () => {
+
+        if (!document.hidden && timerRunning) {
+
+            updateTimer();
+
+        }
 
     });
 
