@@ -1,3 +1,4 @@
+
 const form = document.getElementById('room-form');
 const nickname = document.getElementById('nickname');
 const roomName = document.getElementById('room-name');
@@ -228,8 +229,8 @@ form.addEventListener('submit', event => {
         JSON.stringify(roomConfig)
     );
 
-    formStatus.textContent =
-        'Configurações salvas! Criação online ainda não disponível.';
+    // Redireciona o anfitrião para o Lobby
+    window.location.href = 'lobby.html';
 });
 
 // Inicialização

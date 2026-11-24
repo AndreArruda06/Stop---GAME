@@ -1,0 +1,328 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>STOP! — Sala de espera</title>
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="css/lobby.css">
+</head>
+<body>
+
+    <!-- Cabeçalho -->
+    <header class="topbar">
+        <a href="index.html" class="brand">
+            <span class="logo">STOP!</span>
+            <span class="brand-dot">•</span>
+            <span class="brand-description">
+                O DESAFIO DAS PALAVRAS
+            </span>
+        </a>
+
+        <span class="header-tag">
+            FEITO PARA JUNTAR A TURMA
+        </span>
+    </header>
+
+    <main class="page">
+
+        <!-- Apresentação -->
+        <section class="intro">
+            <span class="eyebrow">SALA DE ESPERA</span>
+
+            <h1>A turma está chegando!</h1>
+
+            <p>Prepare-se, a diversão já vai começar!</p>
+        </section>
+
+        <section class="lobby">
+
+            <!-- Informações da sala -->
+            <div class="room-info">
+
+                <span id="room-name" class="room-name">
+                    Nome da sala
+                </span>
+
+                <span id="room-mode" class="room-mode">
+                    MODO NÃO SELECIONADO
+                </span>
+
+                <div class="room-code-box">
+                    <span>CÓDIGO</span>
+
+                    <strong id="room-code">------</strong>
+
+                    <button type="button" id="copy-code">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="8" y="8" width="12" height="12" rx="2"/>
+                            <path d="M16 8V4H4V16H8"/>
+                        </svg>
+
+                        COPIAR
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- Cartões principais -->
+            <div class="lobby-grid">
+
+                <!-- Cartão de jogadores -->
+                <section class="card players-card">
+
+                    <div class="card-heading">
+                        <h2>JOGADORES</h2>
+
+                        <span id="player-count" class="player-count">
+                            0/8
+                        </span>
+                    </div>
+
+                    <p id="player-summary" class="player-summary">
+                        0 conectados • 8 vagas disponíveis
+                    </p>
+
+                    <!-- Jogadores e vagas gerados pelo JavaScript -->
+                    <ul id="players-list" class="players-list">
+                    </ul>
+
+                    <p id="role-message" class="role-message">
+                        Você é o anfitrião desta sala.
+                    </p>
+
+                </section>
+
+                <!-- Cartão de configurações -->
+                <section class="card settings-card">
+
+                    <h2>CONFIGURAÇÕES</h2>
+
+                    <p id="settings-message" class="settings-message">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="5" y="11" width="14" height="10" rx="2"/>
+                            <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+                        </svg>
+
+                        Só você pode editar.
+                    </p>
+
+                    <div class="settings-list">
+
+                        <!-- Quantidade de jogadores -->
+                        <div class="setting-row">
+
+                            <span>Máximo de jogadores</span>
+
+                            <div class="stepper">
+                                <button type="button"
+                                    data-target="players"
+                                    data-step="-1"
+                                    aria-label="Diminuir jogadores">−</button>
+
+                                <output id="players">8</output>
+
+                                <button type="button"
+                                    data-target="players"
+                                    data-step="1"
+                                    aria-label="Aumentar jogadores">+</button>
+                            </div>
+
+                        </div>
+
+                        <!-- Tempo por rodada -->
+                        <div class="setting-row">
+
+                            <span>Tempo por rodada</span>
+
+                            <div class="stepper">
+                                <button type="button"
+                                    data-target="time"
+                                    data-step="-5"
+                                    aria-label="Diminuir tempo">−</button>
+
+                                <output id="time">10 s</output>
+
+                                <button type="button"
+                                    data-target="time"
+                                    data-step="5"
+                                    aria-label="Aumentar tempo">+</button>
+                            </div>
+
+                        </div>
+
+                        <!-- Quantidade de cartas -->
+                        <div class="setting-row">
+
+                            <span>Cartas de temas</span>
+
+                            <div class="stepper">
+                                <button type="button"
+                                    data-target="cards"
+                                    data-step="-1"
+                                    aria-label="Diminuir cartas">−</button>
+
+                                <output id="cards">5</output>
+
+                                <button type="button"
+                                    data-target="cards"
+                                    data-step="1"
+                                    aria-label="Aumentar cartas">+</button>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- Painel COM CALL -->
+                    <section id="voice-panel"
+                        class="communication-panel voice-panel"
+                        hidden>
+
+                        <div class="communication-heading">
+                            <h3>CALL DA TURMA</h3>
+
+                            <span id="voice-count">0 na call</span>
+                        </div>
+
+                        <div class="voice-status">
+
+                            <div class="voice-bars" aria-hidden="true">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+
+                            <span id="speaker-status">
+                                Ninguém está falando...
+                            </span>
+
+                        </div>
+
+                        <button type="button" id="microphone-button"
+                            class="microphone-button"
+                            aria-pressed="false"
+                            disabled>
+
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                <rect x="9" y="2" width="6" height="12" rx="3"/>
+                                <path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/>
+                            </svg>
+
+                            <span id="microphone-label">
+                                MICROFONE DESLIGADO
+                            </span>
+
+                        </button>
+
+                        <p id="microphone-status" class="communication-note">
+                            Comunicação por voz ainda indisponível.
+                        </p>
+
+                    </section>
+
+                    <!-- Painel SEM CALL -->
+                    <section id="chat-panel"
+                        class="communication-panel chat-panel"
+                        hidden>
+
+                        <div class="communication-heading">
+
+                            <h3>CHAT DA TURMA</h3>
+
+                            <span id="chat-online">0 online</span>
+
+                        </div>
+
+                        <div id="chat-messages"
+                            class="chat-messages"
+                            role="log">
+
+                            <p class="chat-empty">
+                                A turma ainda não chegou.
+                                Compartilhe o código para começar!
+                            </p>
+
+                        </div>
+
+                        <form id="chat-form" class="chat-form">
+
+                            <input type="text"
+                                id="chat-input"
+                                placeholder="Escreva uma mensagem..."
+                                maxlength="200"
+                                autocomplete="off"
+                                aria-label="Mensagem"
+                                disabled>
+
+                            <button type="submit"
+                                id="send-message"
+                                aria-label="Enviar mensagem"
+                                disabled>
+
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M22 2L7 17M22 2L15 22L7 17L2 9L22 2Z"/>
+                                </svg>
+
+                            </button>
+
+                        </form>
+
+                    </section>
+
+                </section>
+
+            </div>
+
+            <!-- Mensagem de espera -->
+            <p id="lobby-status" class="lobby-status" role="status">
+                Esperando a turma: são necessários pelo menos 2 jogadores.
+            </p>
+
+            <!-- Botões de ação -->
+            <div class="lobby-actions">
+
+                <button type="button"
+                    id="start-button"
+                    class="start-button"
+                    disabled>
+
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+                        <rect x="5" y="11" width="14" height="10" rx="2"/>
+                        <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+                    </svg>
+
+                    INICIAR PARTIDA
+
+                </button>
+
+                <button type="button"
+                    id="leave-button"
+                    class="leave-button">
+
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10 17l5-5-5-5M15 12H3M14 3h7v18h-7"/>
+                    </svg>
+
+                    SAIR DA SALA
+
+                </button>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <footer>
+        Uma letra. Mil possibilidades.
+    </footer>
+
+    <script src="js/lobby.js"></script>
+
+</body>
+</html>
