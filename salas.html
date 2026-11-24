@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salas | STOP!</title>
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800;900&display=swap">
+
+    <link rel="stylesheet" href="css/salas.css">
+    <script src="js/salas.js" defer></script>
+</head>
+
+<body>
+
+    <header class="cabecalho">
+        <a href="index.html" class="marca">
+            <span class="logo">STOP!</span>
+            <span class="ponto">•</span>
+            <span class="sublogo">O DESAFIO DAS PALAVRAS</span>
+        </a>
+
+        <span class="selo">FEITO PARA JUNTAR A TURMA</span>
+    </header>
+
+    <main class="conteudo">
+
+        <section class="intro">
+            <p class="sobretitulo">AGORA É JUNTAR A TURMA</p>
+            <h1>Salas para juntar a turma!</h1>
+            <p>Crie seu cantinho ou entre na sala dos amigos.</p>
+        </section>
+
+        <div class="modalidade" id="modalidade">
+            <span id="icone-modo"></span>
+            <strong id="nome-modo">Modo não selecionado</strong>
+            <span id="descricao-modo"></span>
+        </div>
+
+        <section class="salas">
+
+            <article class="cartao">
+
+                <div class="icone-quadro">
+                    <svg viewBox="0 0 32 32" fill="none"
+                         stroke="currentColor" stroke-width="1.8"
+                         stroke-linecap="round">
+                        <path d="M16 7v18M7 16h18"/>
+                    </svg>
+                </div>
+
+                <p class="categoria">A TURMA É SUA</p>
+                <h2>CRIAR SALA</h2>
+
+                <p class="descricao">
+                    Organize uma partida, escolha os temas
+                    e convide seus amigos.
+                </p>
+
+                <button class="botao-sala" id="criar-sala" type="button">
+                    CRIAR SALA
+                    <span>→</span>
+                </button>
+
+            </article>
+
+            <article class="cartao">
+
+                <div class="icone-quadro">
+                    <svg viewBox="0 0 32 32" fill="none"
+                         stroke="currentColor" stroke-width="1.8"
+                         stroke-linecap="round"
+                         stroke-linejoin="round">
+                        <path d="M19 5h8v22h-8M4 16h17M14 9l7 7-7 7"/>
+                    </svg>
+                </div>
+
+                <p class="categoria">JÁ TEM CONVITE?</p>
+                <h2>ENTRAR NA SALA</h2>
+
+                <p class="descricao">
+                    Use o código da sala e venha jogar
+                    com a sua turma.
+                </p>
+
+                <button class="botao-sala" id="entrar-sala" type="button">
+                    ENTRAR NA SALA
+                    <span>→</span>
+                </button>
+
+            </article>
+
+        </section>
+
+        <a href="escolher-modo.html" class="botao-voltar">
+            <span>←</span>
+            VOLTAR
+        </a>
+
+    </main>
+
+    <footer>
+        Uma letra. Mil possibilidades.
+    </footer>
+
+</body>
+</html>

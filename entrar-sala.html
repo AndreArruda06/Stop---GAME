@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>STOP! — Entrar na sala</title>
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap">
+
+    <link rel="stylesheet" href="css/entrar-sala.css">
+</head>
+
+<body>
+
+    <header class="topbar">
+        <a href="index.html" class="brand">
+            <span class="logo">STOP!</span>
+            <span class="brand-dot">•</span>
+            <span class="brand-description">
+                O DESAFIO DAS PALAVRAS
+            </span>
+        </a>
+
+        <span class="header-tag">
+            FEITO PARA JUNTAR A TURMA
+        </span>
+    </header>
+
+    <main class="page">
+
+        <section class="intro">
+
+            <span class="eyebrow">
+                QUEM TEM CÓDIGO TEM TURMA
+            </span>
+
+            <h1>Seu lugar está guardado!</h1>
+
+            <p>Pegue o código com seus amigos e entre na brincadeira.</p>
+
+        </section>
+
+        <form id="join-form" class="room-card" novalidate>
+
+            <!-- Modalidade selecionada -->
+
+            <div class="card-header">
+
+                <span class="mode-tag" id="mode-tag">
+                    MODO NÃO SELECIONADO
+                </span>
+
+            </div>
+
+            <!-- Campos do formulário -->
+
+            <div class="fields">
+
+                <div class="field">
+
+                    <label for="nickname">
+                        Seu apelido *
+                    </label>
+
+                    <input
+                        type="text"
+                        id="nickname"
+                        placeholder="Digite seu apelido"
+                        maxlength="20"
+                        autocomplete="off"
+                        required
+                    >
+
+                    <small class="error" id="nickname-error"></small>
+
+                </div>
+
+                <div class="field">
+
+                    <label for="room-code" class="code-label">
+                        <span class="hash">#</span>
+                        Código da sala *
+                    </label>
+
+                    <input
+                        type="text"
+                        id="room-code"
+                        class="code-input"
+                        placeholder="ABC123"
+                        maxlength="6"
+                        autocomplete="off"
+                        autocapitalize="characters"
+                        spellcheck="false"
+                        required
+                    >
+
+                    <small class="hint">
+                        Exemplo: TURM42 · 6 letras e números, sem espaços.
+                    </small>
+
+                    <small class="error" id="room-code-error"></small>
+
+                </div>
+
+            </div>
+
+            <!-- Botão de entrada -->
+
+            <button
+                type="submit"
+                id="join-button"
+                class="join-button"
+                disabled
+            >
+                ENTRAR NA SALA
+                <span class="arrow">→</span>
+            </button>
+
+            <!-- Informação de segurança -->
+
+            <small class="form-note" id="form-note">
+
+                <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                >
+                    <rect x="5" y="11" width="14" height="10" rx="2"/>
+                    <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+                </svg>
+
+                Só entra quem tem o código. Bora jogar?
+
+            </small>
+
+            <!-- Mensagens de retorno -->
+
+            <p id="form-status" role="status"></p>
+
+        </form>
+
+        <!-- Voltar para a tela de salas -->
+
+        <a href="salas.html" class="back-button">
+            <span>←</span> VOLTAR
+        </a>
+
+        <footer>
+            Uma letra. Mil possibilidades.
+        </footer>
+
+    </main>
+
+    <script src="js/entrar-sala.js"></script>
+
+</body>
+</html>

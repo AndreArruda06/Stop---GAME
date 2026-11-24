@@ -1,0 +1,445 @@
+:root {
+    --azul: #1768b5;
+    --azul-escuro: #0e4a86;
+    --azul-medio: #0d5599;
+    --creme: #fff7df;
+    --amarelo: #ffd83d;
+    --branco: #fffdf6;
+    --bege: #cdbb8c;
+    --vermelho: #c73535;
+    --vermelho-claro: #ffe4db;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--azul);
+    color: var(--branco);
+    font-family: 'Nunito', sans-serif;
+}
+
+button,
+input {
+    font-family: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+/* CABEÇALHO */
+
+.topbar {
+    height: 94px;
+    padding: 30px 31px 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-shrink: 0;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--branco);
+    white-space: nowrap;
+}
+
+.logo {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.brand-dot {
+    color: var(--amarelo);
+    font-size: 15px;
+}
+
+.brand-description {
+    font-size: 10px;
+    font-weight: 900;
+}
+
+.header-tag {
+    background: var(--azul-escuro);
+    color: #eaf3fb;
+    border-radius: 20px;
+    padding: 9px 14px;
+    font-size: 9px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+/* CONTEÚDO PRINCIPAL */
+
+.page {
+    width: 100%;
+    max-width: 1070px;
+    margin: 0 auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 22px 0;
+}
+
+/* APRESENTAÇÃO */
+
+.intro {
+    text-align: center;
+    margin-bottom: 22px;
+}
+
+.eyebrow {
+    display: block;
+    color: var(--amarelo);
+    font-size: 10px;
+    font-weight: 900;
+    margin-bottom: 11px;
+}
+
+.intro h1 {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 39px;
+    font-weight: 700;
+    line-height: 1.15;
+}
+
+.intro p {
+    font-size: 14px;
+    margin-top: 9px;
+}
+
+/* CARTÃO DO FORMULÁRIO */
+
+.room-card {
+    width: 100%;
+    max-width: 490px;
+    background: var(--creme);
+    color: var(--azul-escuro);
+    border-radius: 25px;
+    padding: 25px 28px;
+    box-shadow: 0 4px 0 var(--bege);
+}
+
+/* MODALIDADE */
+
+.card-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 19px;
+}
+
+.mode-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #eee2bd;
+    color: var(--azul-escuro);
+    padding: 8px 14px;
+    border-radius: 25px;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+/* CAMPOS */
+
+.fields {
+    display: flex;
+    flex-direction: column;
+    gap: 17px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+}
+
+.field label {
+    font-size: 12px;
+    font-weight: 800;
+    margin-bottom: 7px;
+}
+
+.field input {
+    width: 100%;
+    height: 46px;
+    padding: 0 14px;
+    border: 1px solid var(--bege);
+    border-radius: 12px;
+    background: var(--branco);
+    color: var(--azul-escuro);
+    font-size: 14px;
+    font-weight: 700;
+    outline: none;
+}
+
+.field input::placeholder {
+    color: #91a1ad;
+}
+
+.field input:focus {
+    border-color: var(--azul);
+    box-shadow: 0 0 0 1px var(--azul);
+}
+
+/* CÓDIGO DA SALA */
+
+.code-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hash {
+    font-size: 21px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.field .code-input {
+    height: 64px;
+    border: 2px solid var(--azul);
+    text-align: center;
+    font-family: 'Fredoka', sans-serif;
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+}
+
+.code-input::placeholder {
+    color: #91a1ad;
+}
+
+/* TEXTOS AUXILIARES */
+
+.hint {
+    font-size: 11px;
+    color: var(--azul);
+    margin-top: 8px;
+}
+
+/* BOTÃO ENTRAR */
+
+.join-button {
+    position: relative;
+    width: 100%;
+    height: 49px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--azul);
+    color: var(--branco);
+    border: none;
+    border-radius: 13px;
+    box-shadow: 0 3px 0 var(--azul-escuro);
+    margin-top: 19px;
+    font-size: 12px;
+    font-weight: 900;
+    transition: background-color .15s, transform .15s;
+}
+
+.join-button .arrow {
+    position: absolute;
+    right: 18px;
+    font-size: 23px;
+    font-weight: 400;
+}
+
+.join-button:hover:not(:disabled) {
+    background: var(--azul-medio);
+}
+
+.join-button:active:not(:disabled) {
+    transform: translateY(2px);
+}
+
+.join-button:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+/* INFORMAÇÃO DE SEGURANÇA */
+
+.form-note {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--azul);
+    font-size: 10px;
+    margin-top: 17px;
+}
+
+.form-note svg {
+    flex-shrink: 0;
+}
+
+/* VALIDAÇÕES E ERROS */
+
+.error {
+    display: none;
+    color: var(--vermelho);
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 7px;
+}
+
+.error.visible {
+    display: block;
+}
+
+.field input.invalid {
+    background: var(--vermelho-claro);
+    border-color: var(--vermelho);
+    color: var(--vermelho);
+}
+
+.field input.invalid:focus {
+    box-shadow: 0 0 0 1px var(--vermelho);
+}
+
+#form-status {
+    color: var(--azul-escuro);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+}
+
+#form-status:not(:empty) {
+    margin-top: 12px;
+}
+
+/* BOTÃO VOLTAR */
+
+.back-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    min-width: 119px;
+    height: 43px;
+    background: var(--azul-medio);
+    color: var(--branco);
+    border: 1px solid rgba(144, 190, 225, .56);
+    border-radius: 14px;
+    box-shadow: 0 3px 0 var(--azul-escuro);
+    padding: 0 19px;
+    margin-top: 22px;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 900;
+    flex-shrink: 0;
+}
+
+.back-button span {
+    font-size: 22px;
+    font-weight: 400;
+}
+
+.back-button:hover {
+    background: var(--azul-escuro);
+}
+
+/* ACESSIBILIDADE */
+
+button:focus-visible,
+a:focus-visible {
+    outline: 3px solid var(--amarelo);
+    outline-offset: 3px;
+}
+
+/* RODAPÉ */
+
+footer {
+    margin-top: auto;
+    text-align: center;
+    padding: 26px 11px 24px;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+/* RESPONSIVIDADE */
+
+@media (max-width: 680px) {
+
+    .topbar {
+        height: 75px;
+        padding: 20px 16px 0;
+    }
+
+    .logo {
+        font-size: 25px;
+    }
+
+    .brand-description {
+        font-size: 7px;
+    }
+
+    .header-tag {
+        font-size: 6px;
+        padding: 7px;
+    }
+
+    .page {
+        padding: 30px 16px 0;
+    }
+
+    .intro h1 {
+        font-size: 32px;
+    }
+
+    .intro p {
+        font-size: 13px;
+    }
+
+    .room-card {
+        max-width: 420px;
+        padding: 23px;
+    }
+
+    .field .code-input {
+        font-size: 27px;
+        letter-spacing: 4px;
+    }
+
+    footer {
+        padding-top: 35px;
+    }
+}
+
+@media (max-width: 360px) {
+
+    .brand {
+        gap: 5px;
+    }
+
+    .brand-description {
+        font-size: 6px;
+    }
+
+    .header-tag {
+        font-size: 5px;
+    }
+
+    .room-card {
+        padding: 20px;
+    }
+
+    .intro h1 {
+        font-size: 28px;
+    }
+}

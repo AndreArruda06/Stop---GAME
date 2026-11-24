@@ -1,0 +1,419 @@
+:root {
+    --blue: #2465a5;
+    --dark-blue: #104f87;
+    --text-blue: #105a9e;
+    --cream: #fdf4dc;
+    --beige: #f0e4c4;
+    --yellow: #ffdc32;
+    --red: #b82d28;
+    --error-bg: #ffe4d8;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    min-height: 100vh;
+    background: var(--cream);
+    color: var(--text-blue);
+    font-family: 'Nunito', sans-serif;
+}
+
+button,
+input {
+    font-family: inherit;
+}
+
+button,
+a {
+    -webkit-tap-highlight-color: transparent;
+}
+
+button {
+    cursor: pointer;
+}
+
+/* CABEÇALHO */
+
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 22px 32px;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--text-blue);
+}
+
+.logo {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -1px;
+}
+
+.brand-dot {
+    color: var(--yellow);
+    font-size: 18px;
+}
+
+.brand-description {
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.header-tag {
+    background: var(--beige);
+    border-radius: 30px;
+    padding: 7px 14px;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+/* CONTEÚDO PRINCIPAL */
+
+.page {
+    width: 100%;
+    max-width: 690px;
+    margin: 22px auto 0;
+    padding: 0 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.intro {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.eyebrow {
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.intro h1 {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 34px;
+    font-weight: 700;
+    margin: 6px 0;
+    letter-spacing: -0.5px;
+}
+
+.intro p {
+    font-size: 14px;
+    color: #397ab2;
+}
+
+/* PAINEL AZUL */
+
+.room-card {
+    width: 100%;
+    background: var(--blue);
+    border-radius: 24px;
+    padding: 24px 26px;
+    border-bottom: 5px solid var(--dark-blue);
+    color: var(--cream);
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+}
+
+.card-title {
+    color: var(--yellow);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.mode-tag {
+    background: var(--dark-blue);
+    padding: 7px 13px;
+    border-radius: 30px;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+/* CAMPOS DE TEXTO */
+
+.fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.field {
+    min-width: 0;
+}
+
+.field label,
+.setting label {
+    display: block;
+    font-size: 11px;
+    font-weight: 800;
+    margin-bottom: 6px;
+}
+
+.field input {
+    width: 100%;
+    height: 44px;
+    background: var(--cream);
+    border: 2px solid var(--beige);
+    border-radius: 12px;
+    padding: 0 12px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-blue);
+    outline: none;
+}
+
+.field input::placeholder {
+    color: #6687a0;
+    font-weight: 600;
+}
+
+.field input:focus {
+    border-color: var(--yellow);
+}
+
+.hint,
+.setting small {
+    display: block;
+    margin-top: 7px;
+    font-size: 10px;
+    color: #d4e2ef;
+}
+
+/* CONFIGURAÇÕES */
+
+.settings {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin: 20px 0 18px;
+}
+
+.setting {
+    min-width: 0;
+}
+
+.stepper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 5px;
+    height: 53px;
+    background: var(--cream);
+    border-radius: 13px;
+    padding: 6px;
+    border-bottom: 4px solid var(--beige);
+}
+
+.stepper button {
+    width: 37px;
+    height: 37px;
+    flex-shrink: 0;
+    border: none;
+    border-radius: 10px;
+    font-size: 23px;
+    color: var(--text-blue);
+    background: var(--beige);
+}
+
+.stepper button:last-child {
+    background: var(--yellow);
+    border-bottom: 2px solid #dfb822;
+}
+
+.stepper button:active:not(:disabled) {
+    transform: translateY(2px);
+}
+
+.stepper button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.stepper output {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 23px;
+    font-weight: 700;
+    color: var(--text-blue);
+    white-space: nowrap;
+}
+
+/* BOTÃO CRIAR SALA */
+
+.create-button {
+    position: relative;
+    width: 100%;
+    height: 48px;
+    background: var(--yellow);
+    color: var(--text-blue);
+    border: none;
+    border-bottom: 4px solid #dfb822;
+    border-radius: 13px;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.create-button .arrow {
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 22px;
+}
+
+.create-button:hover:not(:disabled) {
+    background: #ffe45b;
+}
+
+.create-button:active:not(:disabled) {
+    transform: translateY(2px);
+}
+
+.create-button:disabled {
+    background: #a5b8c2;
+    border-bottom-color: #8297a9;
+    color: #36586c;
+    cursor: not-allowed;
+}
+
+.form-note {
+    display: block;
+    margin-top: 12px;
+    font-size: 10px;
+    color: #e2eaf1;
+}
+
+/* BOTÃO VOLTAR */
+
+.back-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 10px 24px;
+    border: 1px solid #dfcea6;
+    border-bottom: 3px solid #dfcea6;
+    border-radius: 12px;
+    text-decoration: none;
+    color: var(--text-blue);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.back-button span {
+    font-size: 20px;
+    line-height: 16px;
+}
+
+.back-button:hover {
+    background: var(--beige);
+}
+
+/* RODAPÉ */
+
+footer {
+    text-align: center;
+    margin: 45px 0 30px;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+/* VALIDAÇÕES */
+
+.field input.invalid {
+    background: var(--error-bg);
+    border-color: var(--red);
+    color: var(--red);
+}
+
+.error {
+    display: none;
+    margin-top: 6px;
+    color: #ffdad2;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.error.visible {
+    display: block;
+}
+
+.field:has(.error.visible) .hint {
+    display: none;
+}
+
+.field input:disabled {
+    background: #dce1df;
+    border-color: #dce1df;
+    color: #657c8b;
+    cursor: not-allowed;
+}
+
+#form-status:not(:empty) {
+    margin-top: 12px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* RESPONSIVIDADE */
+
+@media (max-width: 600px) {
+
+    .topbar {
+        padding: 16px;
+    }
+
+    .header-tag {
+        display: none;
+    }
+
+    .page {
+        margin-top: 12px;
+    }
+
+    .intro h1 {
+        font-size: 28px;
+    }
+
+    .room-card {
+        padding: 20px;
+    }
+
+    .fields {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .settings {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .stepper {
+        height: 50px;
+    }
+
+    .mode-tag {
+        font-size: 9px;
+    }
+
+    footer {
+        margin-top: 30px;
+    }
+}

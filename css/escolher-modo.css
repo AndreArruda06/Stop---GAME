@@ -1,4 +1,3 @@
-
 /* ========================================
    CORES PRINCIPAIS DO PROJETO
 ======================================== */
@@ -43,8 +42,8 @@ body {
 ======================================== */
 
 .cabecalho {
-    height: 87px;
-    padding: 28px 29px 0;
+    height: 94px;
+    padding: 30px 31px 0;
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -53,7 +52,7 @@ body {
 .marca {
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 8px;
     text-decoration: none;
     color: var(--creme);
     white-space: nowrap;
@@ -61,28 +60,28 @@ body {
 
 .logo {
     font-family: 'Fredoka', sans-serif;
-    font-size: 28px;
+    font-size: 30px;
     font-weight: 700;
     line-height: 1;
 }
 
 .ponto {
     color: var(--amarelo);
-    font-size: 14px;
+    font-size: 15px;
 }
 
 .sublogo {
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 900;
     letter-spacing: 0.05px;
 }
 
 .selo {
-    font-size: 8px;
+    font-size: 9px;
     font-weight: 900;
     background: #14538f;
     border-radius: 20px;
-    padding: 8px 13px;
+    padding: 9px 14px;
     line-height: 1;
 }
 
@@ -92,12 +91,12 @@ body {
 
 .conteudo {
     width: 100%;
-    max-width: 990px;
+    max-width: 1070px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 58px 20px 0;
+    padding: 62px 22px 0;
 }
 
 .intro {
@@ -106,22 +105,22 @@ body {
 
 .sobretitulo {
     color: var(--amarelo);
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 900;
-    margin: 0 0 10px;
+    margin: 0 0 11px;
 }
 
 h1 {
     font-family: 'Fredoka', sans-serif;
-    font-size: 36px;
+    font-size: 39px;
     font-weight: 700;
     line-height: 1.15;
     margin: 0;
 }
 
 .descricao {
-    font-size: 13px;
-    margin: 8px 0 0;
+    font-size: 14px;
+    margin: 9px 0 0;
 }
 
 /* ========================================
@@ -130,9 +129,9 @@ h1 {
 
 .modos {
     display: grid;
-    grid-template-columns: repeat(2, 278px);
-    gap: 19px;
-    margin-top: 24px;
+    grid-template-columns: repeat(2, 300px);
+    gap: 21px;
+    margin-top: 26px;
 }
 
 /* ========================================
@@ -140,11 +139,11 @@ h1 {
 ======================================== */
 
 .cartao {
-    height: 259px;
-    border-radius: 22px 22px 17px 17px;
+    height: 280px;
+    border-radius: 24px 24px 19px 19px;
     background: var(--creme);
     color: var(--texto);
-    padding: 23px;
+    padding: 25px;
     box-shadow: 0 4px 0 #dfc899;
 
     display: flex;
@@ -155,9 +154,9 @@ h1 {
 /* Quadrado amarelo dos ícones */
 
 .icone-quadro {
-    height: 59px;
-    width: 57px;
-    border-radius: 17px;
+    height: 64px;
+    width: 62px;
+    border-radius: 18px;
     background: var(--amarelo);
     box-shadow: 0 2px 0 #c9a921;
 
@@ -167,24 +166,24 @@ h1 {
 }
 
 .icone-quadro svg {
-    width: 29px;
-    height: 29px;
+    width: 31px;
+    height: 31px;
     color: #064b87;
 }
 
 /* Categoria acima do título */
 
 .categoria {
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 900;
-    margin: 14px 0 4px;
+    margin: 15px 0 4px;
 }
 
 /* Títulos COM CALL e SEM CALL */
 
 h2 {
     font-family: 'Fredoka', sans-serif;
-    font-size: 28px;
+    font-size: 30px;
     font-weight: 700;
     line-height: 1;
     margin: 0;
@@ -193,10 +192,10 @@ h2 {
 /* Descrição de cada modo */
 
 .texto-cartao {
-    font-size: 12.5px;
+    font-size: 13.5px;
     line-height: 1.4;
-    margin: 7px 0 0;
-    min-height: 40px;
+    margin: 8px 0 0;
+    min-height: 43px;
 }
 
 /* ========================================
@@ -208,24 +207,24 @@ h2 {
     background: var(--azul);
     color: #fff;
     border: 0;
-    border-radius: 12px;
+    border-radius: 13px;
     width: 100%;
-    height: 36px;
-    min-height: 36px;
-    padding: 0 13px;
+    height: 39px;
+    min-height: 39px;
+    padding: 0 14px;
 
     display: flex;
     align-items: center;
     justify-content: space-between;
 
     font-family: inherit;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 900;
     cursor: pointer;
 }
 
 .botao-modo span {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 400;
     line-height: 1;
 }
@@ -239,29 +238,29 @@ h2 {
 ======================================== */
 
 .botao-voltar {
-    margin-top: 27px;
-    min-width: 110px;
-    height: 40px;
-    padding: 0 18px;
+    margin-top: 29px;
+    min-width: 119px;
+    height: 43px;
+    padding: 0 19px;
 
     background: #10518f;
     color: #fff;
     border: 1px solid #4080b6;
-    border-radius: 13px;
+    border-radius: 14px;
     box-shadow: 0 3px 0 #0b3d6c;
 
     display: flex;
-    gap: 13px;
+    gap: 14px;
     align-items: center;
     justify-content: center;
 
     text-decoration: none;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 900;
 }
 
 .botao-voltar span {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 400;
 }
 
@@ -276,8 +275,8 @@ h2 {
 footer {
     margin-top: auto;
     text-align: center;
-    padding: 24px 10px 22px;
-    font-size: 10px;
+    padding: 26px 11px 24px;
+    font-size: 11px;
     font-weight: 800;
 }
 
@@ -285,7 +284,7 @@ footer {
    RESPONSIVIDADE PARA CELULARES
 ======================================== */
 
-@media (max-width: 580px) {
+@media (max-width: 680px) {
 
     .cabecalho {
         padding: 20px 16px 0;
@@ -310,21 +309,21 @@ footer {
     }
 
     h1 {
-        font-size: 30px;
+        font-size: 32px;
     }
 
     .modos {
         grid-template-columns: minmax(0, 1fr);
-        width: min(100%, 340px);
-        gap: 18px;
+        width: min(100%, 360px);
+        gap: 19px;
     }
 
     .cartao {
-        height: 259px;
+        height: 280px;
     }
 
     .botao-voltar {
-        margin-top: 26px;
+        margin-top: 28px;
     }
 
     footer {

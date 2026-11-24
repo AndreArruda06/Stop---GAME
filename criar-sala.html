@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>STOP! — Criar sala</title>
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap">
+
+    <link rel="stylesheet" href="css/criar-sala.css">
+</head>
+
+<body>
+
+    <header class="topbar">
+        <a href="index.html" class="brand">
+            <span class="logo">STOP!</span>
+            <span class="brand-dot">•</span>
+            <span class="brand-description">
+                O DESAFIO DAS PALAVRAS
+            </span>
+        </a>
+
+        <span class="header-tag">
+            FEITO PARA JUNTAR A TURMA
+        </span>
+    </header>
+
+    <main class="page">
+
+        <section class="intro">
+            <span class="eyebrow">
+                UMA SALA, MIL POSSIBILIDADES
+            </span>
+
+            <h1>Monte a sua partida!</h1>
+
+            <p>Dê um nome à diversão. O resto é com a turma.</p>
+        </section>
+
+        <form id="room-form" class="room-card" novalidate>
+
+            <div class="card-header">
+                <span class="card-title">DO SEU JEITO</span>
+
+                <span class="mode-tag" id="mode-tag">
+                    🎙️ COM CALL · por voz
+                </span>
+            </div>
+
+            <div class="fields">
+
+                <div class="field">
+                    <label for="nickname">Seu apelido *</label>
+
+                    <input
+                        type="text"
+                        id="nickname"
+                        placeholder="Digite seu apelido"
+                        maxlength="20"
+                        autocomplete="off"
+                        required
+                    >
+
+                    <small class="hint">
+                        É assim que você aparece na partida.
+                    </small>
+
+                    <small class="error" id="nickname-error"></small>
+                </div>
+
+                <div class="field">
+                    <label for="room-name">Nome da sala *</label>
+
+                    <input
+                        type="text"
+                        id="room-name"
+                        placeholder="Dê um nome à sala"
+                        maxlength="30"
+                        autocomplete="off"
+                        required
+                    >
+
+                    <small class="hint">
+                        Um nome que todo mundo reconhece.
+                    </small>
+
+                    <small class="error" id="room-name-error"></small>
+                </div>
+
+            </div>
+
+            <div class="settings">
+
+                <div class="setting">
+                    <label>👥 Jogadores</label>
+
+                    <div class="stepper">
+                        <button type="button" data-target="players" data-step="-1">−</button>
+
+                        <output id="players">8</output>
+
+                        <button type="button" data-target="players" data-step="1">+</button>
+                    </div>
+
+                    <small>2 a 12 pessoas</small>
+                </div>
+
+                <div class="setting">
+                    <label>◷ Tempo por rodada</label>
+
+                    <div class="stepper">
+                        <button type="button" data-target="time" data-step="-5">−</button>
+
+                        <output id="time">10 s</output>
+
+                        <button type="button" data-target="time" data-step="5">+</button>
+                    </div>
+
+                    <small>Padrão: 10 segundos</small>
+                </div>
+
+                <div class="setting">
+                    <label>▣ Cartas de temas</label>
+
+                    <div class="stepper">
+                        <button type="button" data-target="cards" data-step="-1">−</button>
+
+                        <output id="cards">5</output>
+
+                        <button type="button" data-target="cards" data-step="1">+</button>
+                    </div>
+
+                    <small>1 a 26 cartas por rodada</small>
+                </div>
+
+            </div>
+
+            <button type="submit" id="create-button" class="create-button" disabled>
+                CRIAR SALA
+                <span class="arrow">→</span>
+            </button>
+
+            <small class="form-note" id="form-note">
+                * Campos obrigatórios. Depois é só compartilhar o código!
+            </small>
+
+            <p id="form-status" role="status"></p>
+
+        </form>
+
+        <a href="salas.html" class="back-button">
+            <span>←</span> VOLTAR
+        </a>
+
+        <footer>
+            Uma letra. Mil possibilidades.
+        </footer>
+
+    </main>
+
+    <script src="js/criar-sala.js"></script>
+
+</body>
+</html>
