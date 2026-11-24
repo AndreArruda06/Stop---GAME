@@ -1,0 +1,639 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>STOP! — Partida</title>
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap">
+
+    <link rel="stylesheet" href="css/jogo.css">
+</head>
+<body>
+
+    <!-- Tela principal da partida -->
+    <div id="game-screen" class="game-screen" inert>
+
+        <!-- Cabeçalho -->
+        <header class="topbar">
+
+            <div class="brand-group">
+
+                <button type="button"
+                    id="back-button"
+                    class="back-button"
+                    aria-label="Voltar">
+
+                    ←
+
+                </button>
+
+                <span class="logo">STOP!</span>
+
+                <span class="brand-description">
+                    O jogo de pensar rápido.
+                </span>
+
+            </div>
+
+            <div class="header-info">
+
+                <span id="room-code" class="room-code">
+                    SALA ------
+                </span>
+
+                <span id="room-mode" class="room-mode">
+                    MODO DE JOGO
+                </span>
+
+            </div>
+
+        </header>
+
+        <!-- Conteúdo principal -->
+        <main class="page">
+
+            <!-- Apresentação -->
+            <section class="game-intro">
+
+                <div>
+
+                    <span class="eyebrow">
+                        02 / PARTIDA
+                    </span>
+
+                    <h1>Uma letra. Mil respostas!</h1>
+
+                    <p>
+                        Pense na resposta e escolha uma letra livre.
+                    </p>
+
+                </div>
+
+                <span id="round-number" class="round-number">
+                    RODADA 01
+                </span>
+
+            </section>
+
+            <!-- Área principal do jogo -->
+            <section class="game-layout">
+
+                <!-- Área da roleta -->
+                <section class="wheel-area">
+
+                    <!-- Cronômetro -->
+                    <div id="timer-card" class="timer-card">
+
+                        <span id="turn-indicator">
+                            AGUARDANDO
+                        </span>
+
+                        <div class="timer-value">
+
+                            <strong id="timer">10</strong>
+
+                            <span>s</span>
+
+                        </div>
+
+                        <span>SEGUNDOS</span>
+
+                    </div>
+
+                    <!-- Roleta -->
+                    <div id="wheel" class="wheel">
+
+                        <!-- Corpo vermelho da roleta -->
+                        <div class="wheel-body"></div>
+
+                        <!-- Detalhes azuis da roleta -->
+                        <div class="wheel-details"
+                            aria-hidden="true">
+
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+
+                        </div>
+
+                        <!-- Letras geradas pelo JavaScript -->
+                        <div id="wheel-letters"
+                            class="wheel-letters">
+                        </div>
+
+                        <!-- Botão central -->
+                        <button type="button"
+                            id="stop-button"
+                            class="stop-button"
+                            disabled>
+
+                            <strong>STOP!</strong>
+
+                            <span id="stop-label">
+                                INICIAR / REINICIAR
+                            </span>
+
+                        </button>
+
+                    </div>
+
+                    <!-- Legenda da roleta -->
+                    <div class="wheel-legend">
+
+                        <span class="legend-item">
+
+                            <span class="legend-color free">
+                            </span>
+
+                            Livre
+
+                        </span>
+
+                        <span class="legend-item">
+
+                            <span class="legend-color used">
+                            </span>
+
+                            Usada
+
+                        </span>
+
+                        <span class="wheel-instruction">
+                            A roleta não gira. Você escolhe a letra.
+                        </span>
+
+                    </div>
+
+                </section>
+
+                <!-- Painel lateral -->
+                <aside class="game-panel">
+
+                    <!-- Tema da rodada -->
+                    <section class="theme-section">
+
+                        <h2>TEMA DA RODADA</h2>
+
+                        <div id="current-card"
+                            class="current-card">
+
+                            <span id="card-number">
+                                CARTA 01
+                            </span>
+
+                            <h3 id="current-theme">
+                                Aguardando sorteio
+                            </h3>
+
+                            <strong class="card-logo">
+                                STOP!
+                            </strong>
+
+                        </div>
+
+                    </section>
+
+                    <!-- Jogador da vez -->
+                    <section class="turn-section">
+
+                        <div class="current-player">
+
+                            <h2>JOGADOR DA VEZ</h2>
+
+                            <strong id="current-player">
+                                Aguardando
+                            </strong>
+
+                        </div>
+
+                        <div class="room-player-count">
+
+                            <span>NA SALA</span>
+
+                            <strong id="player-count">0</strong>
+
+                        </div>
+
+                    </section>
+
+                    <!-- Letra selecionada -->
+                    <div id="selected-letter-box"
+                        class="selected-letter-box"
+                        hidden>
+
+                        <span>LETRA ESCOLHIDA</span>
+
+                        <strong id="selected-letter">—</strong>
+
+                    </div>
+
+                    <!-- Resposta no modo SEM CALL -->
+                    <section id="answer-panel"
+                        class="answer-panel"
+                        hidden>
+
+                        <form id="answer-form"
+                            class="answer-form">
+
+                            <input type="text"
+                                id="answer-input"
+                                placeholder="Digite sua resposta..."
+                                maxlength="100"
+                                autocomplete="off"
+                                aria-label="Sua resposta"
+                                disabled>
+
+                            <button type="submit"
+                                id="answer-submit"
+                                aria-label="Confirmar resposta"
+                                disabled>
+
+                                ↵
+
+                            </button>
+
+                        </form>
+
+                    </section>
+
+                    <!-- Comunicação no modo COM CALL -->
+                    <section id="voice-panel"
+                        class="voice-panel"
+                        hidden>
+
+                        <div class="communication-heading">
+
+                            <h2>CALL DA TURMA</h2>
+
+                            <span id="voice-count">
+                                0 na call
+                            </span>
+
+                        </div>
+
+                        <p id="speaker-status">
+                            Ninguém está falando...
+                        </p>
+
+                        <button type="button"
+                            id="microphone-button"
+                            class="microphone-button"
+                            aria-pressed="false"
+                            disabled>
+
+                            ATIVAR MICROFONE
+
+                        </button>
+
+                    </section>
+
+                    <!-- Jogadores e pontuação -->
+                    <section class="players-section">
+
+                        <div class="players-heading">
+
+                            <h2>NA MESA</h2>
+
+                            <span>PONTOS EM CARTAS</span>
+
+                        </div>
+
+                        <!-- Jogadores gerados pelo JavaScript -->
+                        <ul id="players-list"
+                            class="players-list">
+                        </ul>
+
+                    </section>
+
+                    <!-- Ações da partida -->
+                    <div class="game-actions">
+
+                        <button type="button"
+                            id="pass-turn-button"
+                            class="primary-button"
+                            disabled>
+
+                            PASSAR A VEZ →
+
+                        </button>
+
+                        <button type="button"
+                            id="contest-button"
+                            class="contest-button"
+                            disabled>
+
+                            CONTESTAR RESPOSTA
+
+                        </button>
+
+                        <button type="button"
+                            id="end-round-button"
+                            class="end-round-button"
+                            disabled>
+
+                            ENCERRAR RODADA
+
+                        </button>
+
+                    </div>
+
+                    <!-- Mensagens do jogo -->
+                    <p id="game-status"
+                        class="game-status"
+                        role="status">
+
+                        Aguardando o sorteio da carta.
+
+                    </p>
+
+                </aside>
+
+            </section>
+
+        </main>
+
+        <!-- Rodapé -->
+        <footer class="game-footer">
+
+            <span>
+                PENSE RÁPIDO. JOGUE JUNTO. DÊ STOP!
+            </span>
+
+            <span id="match-info">
+                0 jogadores • 10 segundos por vez
+            </span>
+
+        </footer>
+
+    </div>
+
+    <!-- Sobreposição de sorteio -->
+    <section id="draw-overlay"
+        class="draw-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="draw-title">
+
+        <div class="draw-content">
+
+            <!-- Identificação da rodada -->
+            <span id="draw-round" class="draw-round">
+                RODADA 01
+            </span>
+
+            <h2 id="draw-title">
+                Qual vai ser o desafio?
+            </h2>
+
+            <p id="draw-description">
+                Uma carta. Um tema. Mil possibilidades.
+            </p>
+
+            <!-- Baralho -->
+            <div id="deck" class="deck">
+
+                <!-- Cartas de fundo -->
+                <div class="deck-layer layer-three"
+                    aria-hidden="true">
+                </div>
+
+                <div class="deck-layer layer-two"
+                    aria-hidden="true">
+                </div>
+
+                <div class="deck-layer layer-one"
+                    aria-hidden="true">
+                </div>
+
+                <!-- Carta principal -->
+                <div id="draw-card" class="draw-card">
+
+                    <div class="card-inner">
+
+                        <!-- Verso da carta -->
+                        <div class="card-face card-back">
+
+                            <span class="card-caption">
+                                O QUE VEM AÍ?
+                            </span>
+
+                            <div class="card-center">
+
+                                <strong>STOP!</strong>
+
+                                <span class="question-mark">
+                                    ?
+                                </span>
+
+                            </div>
+
+                            <span class="card-caption">
+                                PENSE FORA DA CAIXA
+                            </span>
+
+                        </div>
+
+                        <!-- Frente da carta -->
+                        <div class="card-face card-front">
+
+                            <span class="card-caption">
+                                TEMA DA RODADA
+                            </span>
+
+                            <h3 id="drawn-theme">
+                                Aguardando sorteio
+                            </h3>
+
+                            <strong class="draw-card-logo">
+                                STOP!
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Quantidade de cartas -->
+            <span id="remaining-cards"
+                class="remaining-cards">
+
+                10 cartas restantes
+
+            </span>
+
+            <!-- Botões do sorteio -->
+            <div class="draw-actions">
+
+                <button type="button"
+                    id="draw-button"
+                    class="primary-button draw-button"
+                    disabled>
+
+                    EMBARALHAR E SORTEAR
+
+                </button>
+
+                <button type="button"
+                    id="start-round-button"
+                    class="primary-button draw-button"
+                    disabled
+                    hidden>
+
+                    COMEÇAR RODADA →
+
+                </button>
+
+            </div>
+
+            <p id="draw-status"
+                class="draw-status"
+                role="status">
+
+                O tema é surpresa. A diversão, não.
+
+            </p>
+
+        </div>
+
+    </section>
+
+    <!-- Sobreposição de contestação -->
+    <section id="contest-overlay"
+        class="modal-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="contest-title"
+        hidden>
+
+        <div class="contest-modal">
+
+            <span class="eyebrow">
+                AVALIAÇÃO DA RESPOSTA
+            </span>
+
+            <h2 id="contest-title">
+                A resposta é válida?
+            </h2>
+
+            <div class="contest-information">
+
+                <p>
+                    Jogador:
+                    <strong id="contest-player">—</strong>
+                </p>
+
+                <p>
+                    Tema:
+                    <strong id="contest-theme">—</strong>
+                </p>
+
+                <p>
+                    Letra:
+                    <strong id="contest-letter">—</strong>
+                </p>
+
+                <p id="contest-answer-row">
+                    Resposta:
+                    <strong id="contest-answer">—</strong>
+                </p>
+
+            </div>
+
+            <div class="vote-actions">
+
+                <button type="button"
+                    id="accept-vote"
+                    class="accept-vote"
+                    disabled>
+
+                    ✓ ACEITAR
+
+                </button>
+
+                <button type="button"
+                    id="reject-vote"
+                    class="reject-vote"
+                    disabled>
+
+                    ✕ REJEITAR
+
+                </button>
+
+            </div>
+
+            <p id="vote-status" role="status">
+                Aguardando votação...
+            </p>
+
+        </div>
+
+    </section>
+
+    <!-- Sobreposição de encerramento da rodada -->
+    <section id="round-end-overlay"
+        class="modal-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="round-end-title"
+        hidden>
+
+        <div class="round-end-modal">
+
+            <span class="eyebrow">
+                FIM DA RODADA
+            </span>
+
+            <h2 id="round-end-title">
+                STOP!
+            </h2>
+
+            <p id="round-end-reason">
+                Rodada encerrada.
+            </p>
+
+            <strong id="round-end-player"></strong>
+
+            <div id="round-results"
+                class="round-results">
+            </div>
+
+            <button type="button"
+                id="next-round-button"
+                class="primary-button"
+                disabled>
+
+                PRÓXIMA RODADA →
+
+            </button>
+
+            <button type="button"
+                id="finish-game-button"
+                class="primary-button"
+                disabled
+                hidden>
+
+                VER RESULTADOS →
+
+            </button>
+
+        </div>
+
+    </section>
+
+    <!-- Banco de cartas -->
+    <script src="js/cartas.js"></script>
+
+    <!-- Lógica da partida -->
+    <script src="js/jogo.js"></script>
+
+</body>
+</html>
