@@ -10,10 +10,13 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap">
 
     <link rel="stylesheet" href="css/jogo.css">
+
+    <!-- Biblioteca para captura da tela -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
-    <!-- Tela principal da partida -->
+    <!-- Tela principal do jogo -->
     <div id="game-screen" class="game-screen" inert>
 
         <!-- Cabeçalho -->
@@ -379,6 +382,15 @@
         role="dialog"
         aria-modal="true"
         aria-labelledby="draw-title">
+
+        <!-- NOVO: fundo capturado da partida -->
+        <div id="draw-background"
+            class="draw-background"
+            aria-hidden="true">
+
+            <img id="draw-background-image" alt="">
+
+        </div>
 
         <div class="draw-content">
 

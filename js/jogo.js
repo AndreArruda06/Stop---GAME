@@ -22,6 +22,184 @@
     const stopButton = $('stop-button');
 
     // ========================================
+    // CAPTURA ESTÁTICA DO FUNDO
+    // ========================================
+
+    const drawBackgroundImage = $('draw-background-image');
+
+    // Mantém a sobreposição escondida enquanto o fundo é preparado.
+    // Assim, o usuário não vê o fundo azul durante a captura.
+    if (drawOverlay) {
+        drawOverlay.hidden = true;
+    }
+
+    let backgroundCapturePromise = null;
+    let backgroundCaptureTimer = null;
+
+    async function captureGameBackground() {
+
+        if (!gameScreen || !drawBackgroundImage) {
+
+            console.warn('Elemento da captura de fundo não encontrado.');
+
+            return false;
+
+        }
+
+        if (typeof window.html2canvas !== 'function') {
+
+            console.warn('html2canvas não foi carregado. Verifique o HTML.');
+
+            return false;
+
+        }
+
+        try {
+
+            if (document.fonts && document.fonts.ready) {
+
+                await document.fonts.ready;
+
+            }
+
+            await new Promise(resolve => {
+
+                requestAnimationFrame(() => {
+
+                    requestAnimationFrame(resolve);
+
+                });
+
+            });
+
+            // Captura somente a tela principal.
+            const originalCanvas = await window.html2canvas(
+                gameScreen,
+                {
+
+                    backgroundColor: '#fff7df',
+
+                    scale: Math.min(
+                        window.devicePixelRatio || 1,
+                        1.25
+                    ),
+
+                    useCORS: true,
+                    allowTaint: false,
+                    logging: false,
+                    imageTimeout: 10000,
+                    scrollX: 0,
+                    scrollY: 0
+
+                }
+            );
+
+            // Canvas para aplicar o desfoque.
+            const blurredCanvas =
+                document.createElement('canvas');
+
+            blurredCanvas.width = originalCanvas.width;
+            blurredCanvas.height = originalCanvas.height;
+
+            const context = blurredCanvas.getContext('2d');
+
+            if (!context) {
+
+                throw new Error('Não foi possível criar o Canvas.');
+
+            }
+
+            // Desfoque aplicado somente durante a captura.
+            context.filter = 'blur(9px)';
+
+            context.drawImage(
+                originalCanvas,
+                0,
+                0
+            );
+
+            context.filter = 'none';
+
+            // Conversão para JPEG mais leve.
+            const imageData = blurredCanvas.toDataURL(
+                'image/jpeg',
+                0.82
+            );
+
+            // Carrega a imagem no fundo do sorteio.
+            await new Promise((resolve, reject) => {
+
+                drawBackgroundImage.onload = resolve;
+                drawBackgroundImage.onerror = reject;
+
+                drawBackgroundImage.classList.remove('loaded');
+
+                drawBackgroundImage.src = imageData;
+
+            });
+
+            drawBackgroundImage.classList.add('loaded');
+
+            // Libera a memória dos Canvas temporários.
+            originalCanvas.width = 0;
+            originalCanvas.height = 0;
+
+            blurredCanvas.width = 0;
+            blurredCanvas.height = 0;
+
+            return true;
+
+        } catch (error) {
+
+            console.error(
+                'Erro ao capturar o fundo do jogo:',
+                error
+            );
+
+            return false;
+
+        }
+
+    }
+
+    // Evita capturas simultâneas.
+    function requestBackgroundCapture() {
+
+        if (backgroundCapturePromise) {
+
+            return backgroundCapturePromise;
+
+        }
+
+        backgroundCapturePromise = captureGameBackground()
+            .finally(() => {
+
+                backgroundCapturePromise = null;
+
+            });
+
+        return backgroundCapturePromise;
+
+    }
+
+    // Atualiza a imagem quando a janela mudar de tamanho.
+    window.addEventListener('resize', () => {
+
+        clearTimeout(backgroundCaptureTimer);
+
+        backgroundCaptureTimer = setTimeout(() => {
+
+            if (drawOverlay.hidden) {
+
+                requestBackgroundCapture();
+
+            }
+
+        }, 450);
+
+    });
+
+    // ========================================
     // AMBIENTE DE TESTES DO DESENVOLVEDOR
     // ========================================
 
@@ -480,7 +658,7 @@
     // SORTEIO DA CARTA
     // ========================================
 
-    function drawTheme() {
+    async function drawTheme() {
 
         if (players.length < 2) return;
 
@@ -500,6 +678,8 @@
         $('draw-status').textContent =
             'Preparando o próximo desafio...';
 
+        // O fundo já foi preparado na inicialização.
+        // O sorteio começa imediatamente, sem esperar pelo html2canvas.
         deck.classList.add('shuffling');
 
         const reducedMotion = window.matchMedia(
@@ -579,6 +759,13 @@
                 'Pressione STOP! para iniciar.';
 
             stopButton.focus();
+
+            // Atualiza o fundo em segundo plano para o próximo sorteio.
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    requestBackgroundCapture();
+                });
+            });
 
         }, reducedMotion ? 0 : 250);
 
@@ -680,12 +867,26 @@
     // INICIALIZAÇÃO
     // ========================================
 
-    setupInterface();
+    async function initializeGame() {
 
-    if (!drawButton.disabled) {
+        // Monta a interface e os elementos da roleta.
+        setupInterface();
 
-        drawButton.focus();
+        // Captura o jogo com a sobreposição ainda escondida.
+        // A tela de sorteio só aparece quando a imagem estiver pronta.
+        await requestBackgroundCapture();
+
+        // Mostra o sorteio já com o fundo preparado.
+        drawOverlay.hidden = false;
+
+        if (!drawButton.disabled) {
+
+            drawButton.focus();
+
+        }
 
     }
+
+    initializeGame();
 
 })();
