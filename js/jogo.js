@@ -22,83 +22,103 @@
     const stopButton = $('stop-button');
 
     // ========================================
+    // AMBIENTE DE TESTES DO DESENVOLVEDOR
+    // ========================================
+
+    const ambienteTeste =
+        typeof criarSalaTeste === 'function'
+            ? criarSalaTeste()
+            : null;
+
+    const modoTeste = ambienteTeste !== null;
+
+    // ========================================
     // CONFIGURAÇÕES DA SALA
     // ========================================
 
     let roomConfig;
 
-    try {
+    if (modoTeste) {
 
-        roomConfig = JSON.parse(
-            sessionStorage.getItem('roomConfig')
-        );
+        // Utiliza exclusivamente os dados simulados.
+        roomConfig = ambienteTeste.sala;
 
-    } catch {
+    } else {
 
-        roomConfig = null;
+        // Recupera as configurações da sala normal.
+        try {
+
+            roomConfig = JSON.parse(
+                sessionStorage.getItem('roomConfig')
+            );
+
+        } catch {
+
+            roomConfig = null;
+
+        }
 
     }
 
-    // Configurações provisórias para testes locais
+    // Impede o acesso sem uma sala válida.
+    if (
+        !roomConfig ||
+        !['com-call', 'sem-call'].includes(roomConfig.mode)
+    ) {
+
+        window.location.replace('salas.html');
+
+        return;
+
+    }
 
     const config = {
 
-        nickname: roomConfig?.nickname || 'Jogador',
+        nickname: roomConfig.nickname || 'Jogador',
 
-        roomCode: roomConfig?.roomCode || 'TESTE1',
+        roomCode: roomConfig.roomCode || '------',
 
-        mode: roomConfig?.mode === 'com-call'
-            ? 'com-call'
-            : 'sem-call',
+        mode: roomConfig.mode,
 
         time: Math.min(
             120,
-            Math.max(5, Math.floor(Number(roomConfig?.time) || 10))
+            Math.max(
+                5,
+                Math.floor(Number(roomConfig.time) || 10)
+            )
         ),
 
         cards: Math.min(
             26,
             BANCO_CARTAS.length,
-            Math.max(1, Math.floor(Number(roomConfig?.cards) || 10))
+            Math.max(
+                1,
+                Math.floor(Number(roomConfig.cards) || 10)
+            )
         )
 
     };
 
     // ========================================
-    // JOGADORES SIMULADOS
+    // JOGADORES DA PARTIDA
     // ========================================
 
-    const players = [
+    const players = modoTeste
 
-        {
-            id: 'host',
-            nickname: config.nickname,
-            score: 0,
-            eliminated: false
-        },
+        // Jogadores fornecidos pelo teste.js.
+        ? ambienteTeste.jogadores.map(player => ({
+            ...player
+        }))
 
-        {
-            id: 'player-2',
-            nickname: 'Bia',
-            score: 0,
-            eliminated: false
-        },
-
-        {
-            id: 'player-3',
-            nickname: 'Gui',
-            score: 0,
-            eliminated: false
-        },
-
-        {
-            id: 'player-4',
-            nickname: 'Léo',
-            score: 0,
-            eliminated: false
-        }
-
-    ];
+        // Sala normal: integração multiplayer futura.
+        : [
+            {
+                id: 'host',
+                nickname: config.nickname,
+                score: 0,
+                eliminated: false
+            }
+        ];
 
     // ========================================
     // ESTADO DA PARTIDA
@@ -143,8 +163,7 @@
 
     }
 
-    // Seleciona somente a quantidade configurada
-
+    // Seleciona somente a quantidade configurada.
     const matchDeck = shuffleCards(BANCO_CARTAS)
         .slice(0, config.cards);
 
@@ -183,10 +202,28 @@
 
         createWheel();
 
-        drawButton.disabled = false;
+        // Exige pelo menos dois jogadores.
+        drawButton.disabled = players.length < 2;
+
+        if (players.length < 2) {
+
+            $('draw-status').textContent =
+                'São necessários pelo menos dois jogadores.';
+
+            return;
+
+        }
 
         $('draw-status').textContent =
             `${players[currentPlayerIndex].nickname} realizará o sorteio.`;
+
+        // Identificação exclusiva do ambiente de teste.
+        if (modoTeste) {
+
+            $('match-info').textContent +=
+                ' • MODO DE TESTE';
+
+        }
 
     }
 
@@ -445,6 +482,8 @@
 
     function drawTheme() {
 
+        if (players.length < 2) return;
+
         if (isShuffling) return;
 
         if (currentCard) return;
@@ -618,9 +657,16 @@
 
     $('back-button').addEventListener('click', () => {
 
-        window.location.href = roomConfig
-            ? 'lobby.html'
-            : 'salas.html';
+        // O teste não interfere na sala normal.
+        if (modoTeste) {
+
+            window.location.href = 'index.html';
+
+            return;
+
+        }
+
+        window.location.href = 'lobby.html';
 
     });
 
@@ -636,6 +682,10 @@
 
     setupInterface();
 
-    drawButton.focus();
+    if (!drawButton.disabled) {
+
+        drawButton.focus();
+
+    }
 
 })();

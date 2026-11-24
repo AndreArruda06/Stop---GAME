@@ -1051,6 +1051,9 @@ input:focus-visible {
 
     text-align: center;
     color: var(--white);
+
+    /* Otimização: isolamento do layout do sorteio */
+    contain: layout style;
 }
 
 .draw-round {
@@ -1088,25 +1091,31 @@ input:focus-visible {
 
     margin: 30px 0 24px;
 
-    perspective: 1000px;
+    /* A perspectiva permanece na carta principal */
 
     isolation: isolate;
 }
 
 /* Brilho suave atrás das cartas */
+/* Otimização: gradiente radial sem filtro de blur */
 
 .deck::before {
     content: '';
 
     position: absolute;
-    inset: 10px;
+    inset: -45px;
 
     z-index: -1;
 
-    background: rgba(255, 216, 61, .45);
-    border-radius: 35px;
+    background: radial-gradient(
+        ellipse at center,
+        rgba(255, 216, 61, .45) 0%,
+        rgba(255, 216, 61, .30) 35%,
+        rgba(255, 216, 61, .12) 60%,
+        rgba(255, 216, 61, 0) 80%
+    );
 
-    filter: blur(32px);
+    border-radius: 35px;
 
     pointer-events: none;
 }
