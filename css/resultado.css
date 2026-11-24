@@ -1,0 +1,1251 @@
+/* ========================================
+   VARIÁVEIS DA IDENTIDADE VISUAL
+======================================== */
+
+:root {
+
+    --blue: #1065a7;
+    --blue-deep: #0e4b7d;
+    --blue-text: #10548b;
+
+    --red: #f5473e;
+    --yellow: #ffda28;
+
+    --cream: #fcf3da;
+    --cream-light: #fff8e6;
+
+    --gold: #ffe598;
+    --silver: #e4ebf1;
+    --bronze: #edc6aa;
+
+    --font-title: 'Fredoka', sans-serif;
+    --font-body: 'Nunito', sans-serif;
+
+}
+
+/* ========================================
+   RESET
+======================================== */
+
+* {
+
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+
+}
+
+[hidden] {
+
+    display: none !important;
+
+}
+
+html {
+
+    min-height: 100%;
+
+}
+
+body {
+
+    min-height: 100vh;
+
+    font-family: var(--font-body);
+
+    background: var(--blue);
+
+    -webkit-font-smoothing: antialiased;
+
+}
+
+button {
+
+    font: inherit;
+
+    cursor: pointer;
+
+}
+
+button:focus-visible {
+
+    outline: 3px solid var(--red);
+
+    outline-offset: 5px;
+
+}
+
+/* ========================================
+   ESTRUTURA DAS TELAS
+======================================== */
+
+.result-screen {
+
+    position: relative;
+
+    min-height: 100vh;
+    min-height: 100dvh;
+
+    display: flex;
+
+    flex-direction: column;
+
+    overflow: hidden;
+
+}
+
+.champion-screen {
+
+    background: var(--blue);
+
+    color: var(--cream);
+
+}
+
+.ranking-screen {
+
+    background: var(--cream);
+
+    color: var(--blue-text);
+
+}
+
+/* ========================================
+   CABEÇALHO
+======================================== */
+
+.topbar {
+
+    position: relative;
+
+    z-index: 2;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    padding: 24px 32px;
+
+}
+
+.logo {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    width: fit-content;
+
+    padding: 8px 15px;
+
+    background: var(--red);
+
+    color: var(--cream-light);
+
+    font-family: var(--font-title);
+
+    font-size: 23px;
+
+    font-weight: 700;
+
+    border-radius: 11px;
+
+    transform: rotate(4deg);
+
+    box-shadow: 0 4px 0 rgba(130, 35, 25, 0.25);
+
+}
+
+.status-badge {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 9px;
+
+    padding: 10px 18px;
+
+    background: rgba(0, 0, 0, 0.18);
+
+    border-radius: 30px;
+
+    font-size: 10px;
+
+    font-weight: 900;
+
+    letter-spacing: 0.3px;
+
+}
+
+.status-dot {
+
+    width: 8px;
+
+    height: 8px;
+
+    background: var(--yellow);
+
+    border-radius: 50%;
+
+}
+
+.ranking-screen .status-badge {
+
+    background: #eee3c4;
+
+    color: var(--blue-text);
+
+}
+
+.ranking-screen .status-dot {
+
+    background: var(--red);
+
+}
+
+/* ========================================
+   TELA DO CAMPEÃO
+======================================== */
+
+.champion-content {
+
+    position: relative;
+
+    z-index: 1;
+
+    flex: 1;
+
+    width: 100%;
+
+    max-width: 850px;
+
+    margin: 0 auto;
+
+    padding: 20px 25px 30px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    justify-content: center;
+
+    text-align: center;
+
+}
+
+.eyebrow {
+
+    font-size: 11px;
+
+    font-weight: 900;
+
+    letter-spacing: 0.9px;
+
+}
+
+.champion-screen .eyebrow {
+
+    color: var(--yellow);
+
+}
+
+h1 {
+
+    font-family: var(--font-title);
+
+    font-weight: 700;
+
+    line-height: 1.1;
+
+}
+
+.champion-content h1 {
+
+    font-size: clamp(32px, 4vw, 58px);
+
+    margin-top: 15px;
+
+}
+
+.subtitle {
+
+    margin-top: 13px;
+
+    color: #c6e0f4;
+
+    font-size: 14px;
+
+    font-weight: 600;
+
+}
+
+/* ========================================
+   TROFÉU
+======================================== */
+
+.trophy {
+
+    margin-top: 18px;
+
+    margin-bottom: 15px;
+
+    font-size: clamp(65px, 7vw, 100px);
+
+    line-height: 1.15;
+
+    animation: trophy-entry 650ms ease-out both;
+
+}
+
+@keyframes trophy-entry {
+
+    from {
+
+        opacity: 0;
+
+        transform: translateY(15px) scale(0.8);
+
+    }
+
+    to {
+
+        opacity: 1;
+
+        transform: translateY(0) scale(1);
+
+    }
+
+}
+
+/* ========================================
+   AVATAR DO CAMPEÃO
+======================================== */
+
+.champion-avatar {
+
+    width: 125px;
+
+    height: 125px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    background: var(--cream-light);
+
+    border: 9px solid var(--yellow);
+
+    border-radius: 50%;
+
+    box-shadow:
+
+        0 0 0 4px #fff2ab,
+
+        0 7px 0 rgba(0, 0, 0, 0.15);
+
+}
+
+.champion-avatar span {
+
+    font-family: var(--font-title);
+
+    font-weight: 700;
+
+    font-size: 68px;
+
+    color: var(--blue);
+
+}
+
+#champion-name {
+
+    margin-top: 18px;
+
+    max-width: 100%;
+
+    overflow-wrap: anywhere;
+
+    font-family: var(--font-title);
+
+    font-size: clamp(30px, 4vw, 42px);
+
+    font-weight: 700;
+
+}
+
+.champion-message {
+
+    font-size: 14px;
+
+    font-weight: 700;
+
+    margin-top: 5px;
+
+}
+
+/* ========================================
+   PONTUAÇÃO DO CAMPEÃO
+======================================== */
+
+.champion-stats {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    width: 100%;
+
+    max-width: 390px;
+
+    padding: 20px 10px;
+
+    margin-top: 16px;
+
+    background: var(--blue-deep);
+
+    border-radius: 18px;
+
+}
+
+.stat {
+
+    flex: 1;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    gap: 5px;
+
+}
+
+.stat strong {
+
+    font-family: var(--font-title);
+
+    font-size: 30px;
+
+    font-weight: 700;
+
+    color: var(--yellow);
+
+}
+
+.stat span {
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+}
+
+.stat-divider {
+
+    width: 1px;
+
+    height: 38px;
+
+    background: rgba(255, 255, 255, 0.15);
+
+}
+
+/* ========================================
+   BOTÕES
+======================================== */
+
+.primary-button {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 35px;
+
+    width: 100%;
+
+    min-height: 54px;
+
+    padding: 15px 25px;
+
+    background: var(--yellow);
+
+    color: var(--blue-deep);
+
+    border: none;
+
+    border-radius: 14px;
+
+    font-size: 16px;
+
+    font-weight: 900;
+
+    box-shadow: 0 4px 0 #d8ae20;
+
+    transition:
+
+        transform 150ms ease,
+
+        background-color 150ms ease,
+
+        box-shadow 150ms ease;
+
+}
+
+.primary-button:hover {
+
+    background: #ffe354;
+
+    transform: translateY(-2px);
+
+    box-shadow: 0 6px 0 #d8ae20;
+
+}
+
+.primary-button:active {
+
+    transform: translateY(3px);
+
+    box-shadow: 0 1px 0 #d8ae20;
+
+}
+
+.champion-actions,
+
+.ranking-actions {
+
+    width: 100%;
+
+    max-width: 285px;
+
+    margin-top: 35px;
+
+}
+
+.footer-caption {
+
+    margin-top: 15px;
+
+    font-size: 11px;
+
+    text-align: center;
+
+}
+
+.champion-screen .footer-caption {
+
+    color: #bfdcf3;
+
+}
+
+/* ========================================
+   CONFETES LEVES
+======================================== */
+
+.confetti {
+
+    position: absolute;
+
+    inset: 0;
+
+    pointer-events: none;
+
+    overflow: hidden;
+
+}
+
+.confetti-piece {
+
+    position: absolute;
+
+    width: 11px;
+
+    height: 5px;
+
+    border-radius: 2px;
+
+    background: var(--confetti-color);
+
+    transform: rotate(var(--confetti-angle));
+
+    animation: confetti-entry 750ms ease-out both;
+
+    animation-delay: var(--confetti-delay);
+
+}
+
+.confetti-star {
+
+    position: absolute;
+
+    color: var(--confetti-color);
+
+    font-size: 22px;
+
+    line-height: 1;
+
+    animation: confetti-entry 750ms ease-out both;
+
+    animation-delay: var(--confetti-delay);
+
+}
+
+@keyframes confetti-entry {
+
+    from {
+
+        opacity: 0;
+
+        translate: 0 -15px;
+
+    }
+
+    to {
+
+        opacity: 1;
+
+        translate: 0 0;
+
+    }
+
+}
+
+/* ========================================
+   TELA DO RANKING
+======================================== */
+
+.ranking-content {
+
+    flex: 1;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    justify-content: center;
+
+    width: 100%;
+
+    max-width: 1000px;
+
+    padding: 20px 30px 30px;
+
+    margin: 0 auto;
+
+    text-align: center;
+
+}
+
+.ranking-screen .eyebrow {
+
+    color: var(--red);
+
+}
+
+.ranking-content h1 {
+
+    font-size: clamp(30px, 4vw, 48px);
+
+    color: var(--blue);
+
+    margin-top: 15px;
+
+}
+
+.ranking-info {
+
+    margin-top: 12px;
+
+    margin-bottom: 16px;
+
+    color: var(--blue);
+
+    font-size: 14px;
+
+    font-weight: 800;
+
+}
+
+/* ========================================
+   QUADRO DE CLASSIFICAÇÃO
+======================================== */
+
+.ranking-board {
+
+    width: 100%;
+
+    max-width: 820px;
+
+    padding: 14px;
+
+    background: var(--blue);
+
+    border-radius: 22px;
+
+    box-shadow: 0 5px 0 #b0c6ca;
+
+}
+
+.ranking-header {
+
+    display: grid;
+
+    grid-template-columns: minmax(0, 1fr) 85px 85px;
+
+    align-items: center;
+
+    gap: 12px;
+
+    padding: 4px 15px 13px;
+
+    color: var(--cream);
+
+    font-size: 10px;
+
+    font-weight: 900;
+
+}
+
+.ranking-header span:first-child {
+
+    text-align: left;
+
+}
+
+/* ========================================
+   LISTA VERTICAL DE JOGADORES
+======================================== */
+
+.ranking-list {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 8px;
+
+    max-height: 332px;
+
+    padding-right: 3px;
+
+    overflow-y: auto;
+
+    overscroll-behavior: contain;
+
+    scrollbar-width: thin;
+
+    scrollbar-color: #b5d8ed var(--blue);
+
+}
+
+.ranking-list::-webkit-scrollbar {
+
+    width: 6px;
+
+}
+
+.ranking-list::-webkit-scrollbar-thumb {
+
+    background: #b5d8ed;
+
+    border-radius: 10px;
+
+}
+
+.ranking-row {
+
+    flex-shrink: 0;
+
+    display: grid;
+
+    grid-template-columns: minmax(0, 1fr) 85px 85px;
+
+    gap: 12px;
+
+    align-items: center;
+
+    min-height: 60px;
+
+    padding: 10px 15px;
+
+    background: var(--cream);
+
+    color: var(--blue-deep);
+
+    border-radius: 13px;
+
+}
+
+.ranking-player {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+
+    min-width: 0;
+
+    text-align: left;
+
+}
+
+.ranking-position {
+
+    flex-shrink: 0;
+
+    min-width: 23px;
+
+    font-family: var(--font-title);
+
+    font-size: 21px;
+
+    font-weight: 600;
+
+}
+
+.ranking-avatar {
+
+    flex-shrink: 0;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    width: 34px;
+
+    height: 34px;
+
+    background: var(--blue);
+
+    color: white;
+
+    border-radius: 50%;
+
+    font-family: var(--font-title);
+
+    font-weight: 600;
+
+    font-size: 17px;
+
+}
+
+.ranking-player-info {
+
+    min-width: 0;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 2px;
+
+}
+
+.ranking-name {
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+
+    font-size: 15px;
+
+    font-weight: 900;
+
+}
+
+.ranking-medal {
+
+    font-size: 9px;
+
+    font-weight: 900;
+
+    letter-spacing: 0.4px;
+
+}
+
+.ranking-value {
+
+    font-family: var(--font-title);
+
+    font-size: 23px;
+
+    font-weight: 600;
+
+    text-align: center;
+
+}
+
+/* ========================================
+   CORES DO PÓDIO
+======================================== */
+
+.ranking-row.gold {
+
+    background: var(--gold);
+
+}
+
+.ranking-row.gold .ranking-position {
+
+    color: #926000;
+
+}
+
+.ranking-row.gold .ranking-medal {
+
+    color: #805500;
+
+}
+
+.ranking-row.silver {
+
+    background: var(--silver);
+
+}
+
+.ranking-row.bronze {
+
+    background: var(--bronze);
+
+}
+
+.scroll-hint {
+
+    margin-top: 9px;
+
+    color: var(--cream);
+
+    font-size: 10px;
+
+}
+
+/* ========================================
+   REGRAS DO RANKING
+======================================== */
+
+.ranking-rules {
+
+    margin-top: 15px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 8px;
+
+    color: var(--blue);
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+}
+
+.ranking-screen .footer-caption {
+
+    color: var(--blue);
+
+}
+
+/* ========================================
+   TRANSIÇÃO ENTRE AS TELAS
+======================================== */
+
+.screen-enter {
+
+    animation: screen-entry 300ms ease-out both;
+
+}
+
+@keyframes screen-entry {
+
+    from {
+
+        opacity: 0;
+
+        transform: translateY(8px);
+
+    }
+
+    to {
+
+        opacity: 1;
+
+        transform: translateY(0);
+
+    }
+
+}
+
+/* ========================================
+   TELA DE ERRO
+======================================== */
+
+.error-screen {
+
+    min-height: 100vh;
+
+    padding: 30px;
+
+    background: var(--cream);
+
+    color: var(--blue);
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    justify-content: center;
+
+    text-align: center;
+
+    gap: 25px;
+
+}
+
+.error-screen h1 {
+
+    font-size: 35px;
+
+}
+
+.error-screen .primary-button {
+
+    max-width: 285px;
+
+}
+
+/* ========================================
+   RESPONSIVIDADE
+======================================== */
+
+@media (max-width: 600px) {
+
+    .topbar {
+
+        padding: 20px 17px;
+
+    }
+
+    .logo {
+
+        font-size: 19px;
+
+    }
+
+    .status-badge {
+
+        font-size: 8px;
+
+        padding: 9px 11px;
+
+    }
+
+    .champion-content,
+
+    .ranking-content {
+
+        padding-left: 15px;
+
+        padding-right: 15px;
+
+    }
+
+    .champion-avatar {
+
+        width: 100px;
+
+        height: 100px;
+
+        border-width: 7px;
+
+    }
+
+    .champion-avatar span {
+
+        font-size: 52px;
+
+    }
+
+    .confetti-piece {
+
+        width: 8px;
+
+        height: 4px;
+
+        opacity: 0.7;
+
+    }
+
+    .ranking-board {
+
+        padding: 9px;
+
+        border-radius: 16px;
+
+    }
+
+    .ranking-header,
+
+    .ranking-row {
+
+        grid-template-columns:
+
+            minmax(0, 1fr) 47px 48px;
+
+        gap: 5px;
+
+        padding-left: 8px;
+
+        padding-right: 8px;
+
+    }
+
+    .ranking-header {
+
+        font-size: 8px;
+
+    }
+
+    .ranking-player {
+
+        gap: 6px;
+
+    }
+
+    .ranking-position {
+
+        font-size: 16px;
+
+        min-width: 17px;
+
+    }
+
+    .ranking-avatar {
+
+        width: 27px;
+
+        height: 27px;
+
+        font-size: 13px;
+
+    }
+
+    .ranking-name {
+
+        font-size: 12px;
+
+    }
+
+    .ranking-value {
+
+        font-size: 19px;
+
+    }
+
+    .ranking-medal {
+
+        font-size: 8px;
+
+    }
+
+}
+
+@media (max-height: 800px) and (min-width: 601px) {
+
+    .topbar {
+
+        padding: 18px 28px;
+
+    }
+
+    .champion-content,
+
+    .ranking-content {
+
+        padding-top: 10px;
+
+        padding-bottom: 18px;
+
+    }
+
+    .trophy {
+
+        font-size: 70px;
+
+        margin-top: 12px;
+
+        margin-bottom: 12px;
+
+    }
+
+    .champion-avatar {
+
+        width: 100px;
+
+        height: 100px;
+
+        border-width: 7px;
+
+    }
+
+    .champion-avatar span {
+
+        font-size: 52px;
+
+    }
+
+    .champion-stats {
+
+        padding: 13px 10px;
+
+    }
+
+    .champion-actions,
+
+    .ranking-actions {
+
+        margin-top: 25px;
+
+    }
+
+}
+
+/* ========================================
+   ACESSIBILIDADE E DESEMPENHO
+======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+
+    * {
+
+        animation: none !important;
+
+        transition: none !important;
+
+    }
+
+}

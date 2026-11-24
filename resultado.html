@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>STOP! | Resultado Final</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <link rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800;900&display=swap"
+          rel="stylesheet">
+
+    <link rel="stylesheet" href="css/resultado.css">
+</head>
+
+<body>
+
+    <!-- ===================================== -->
+    <!-- TELA DO CAMPEÃO                       -->
+    <!-- ===================================== -->
+
+    <section id="champion-screen"
+             class="result-screen champion-screen">
+
+        <header class="topbar">
+
+            <div class="logo">STOP!</div>
+
+            <div class="status-badge">
+                <span class="status-dot"></span>
+                PARTIDA ENCERRADA
+            </div>
+
+        </header>
+
+        <div id="confetti" class="confetti"
+             aria-hidden="true">
+        </div>
+
+        <main class="champion-content">
+
+            <span class="eyebrow">
+                ÚLTIMA RODADA CONCLUÍDA
+            </span>
+
+            <h1>TEMOS UM CAMPEÃO!</h1>
+
+            <p class="subtitle">
+                Uma partida de respeito. Uma vitória de milhões.
+            </p>
+
+            <div class="trophy" aria-hidden="true">
+                🏆
+            </div>
+
+            <div class="champion-avatar">
+                <span id="champion-avatar">?</span>
+            </div>
+
+            <h2 id="champion-name">
+                Campeão
+            </h2>
+
+            <p class="champion-message">
+                Mandou bem demais!
+            </p>
+
+            <div class="champion-stats">
+
+                <div class="stat">
+
+                    <strong id="champion-cards">0</strong>
+
+                    <span>cartas conquistadas</span>
+
+                </div>
+
+                <div class="stat-divider"></div>
+
+                <div class="stat">
+
+                    <strong id="champion-hits">0</strong>
+
+                    <span>acertos totais</span>
+
+                </div>
+
+            </div>
+
+            <div class="champion-actions">
+
+                <button id="advance-button"
+                        class="primary-button"
+                        type="button">
+
+                    AVANÇAR
+
+                    <span aria-hidden="true">→</span>
+
+                </button>
+
+                <p class="footer-caption">
+                    Agora é hora de ver a classificação final.
+                </p>
+
+            </div>
+
+        </main>
+
+    </section>
+
+    <!-- ===================================== -->
+    <!-- TELA DO RANKING FINAL                 -->
+    <!-- ===================================== -->
+
+    <section id="ranking-screen"
+             class="result-screen ranking-screen"
+             hidden>
+
+        <header class="topbar">
+
+            <div class="logo">STOP!</div>
+
+            <div class="status-badge">
+
+                <span class="status-dot"></span>
+
+                PARTIDA ENCERRADA
+
+            </div>
+
+        </header>
+
+        <main class="ranking-content">
+
+            <span class="eyebrow">
+                CADA CARTA CONTOU!
+            </span>
+
+            <h1>RANKING DA PARTIDA</h1>
+
+            <p id="ranking-info"
+               class="ranking-info">
+
+                0 rodadas realizadas • 0 jogadores
+
+            </p>
+
+            <div class="ranking-board">
+
+                <div class="ranking-header">
+
+                    <span>POS. / JOGADOR</span>
+
+                    <span>CARTAS</span>
+
+                    <span>ACERTOS</span>
+
+                </div>
+
+                <div id="ranking-list"
+                     class="ranking-list"
+                     role="list">
+                </div>
+
+                <p id="scroll-hint"
+                   class="scroll-hint"
+                   hidden>
+
+                    ↕ Role para ver todos os jogadores
+
+                </p>
+
+            </div>
+
+            <div class="ranking-rules">
+
+                <p>
+                    Mais cartas primeiro. Em empate, vale o total de acertos.
+                </p>
+
+                <p>
+                    Empate absoluto pelo título? A morte súbita define o campeão.
+                </p>
+
+            </div>
+
+            <div class="ranking-actions">
+
+                <button id="menu-button"
+                        class="primary-button"
+                        type="button">
+
+                    VOLTAR AO MENU
+
+                </button>
+
+                <p class="footer-caption">
+                    Uma letra. Mil possibilidades.
+                </p>
+
+            </div>
+
+        </main>
+
+    </section>
+
+    <!-- ===================================== -->
+    <!-- PROTEÇÃO CONTRA ACESSO SEM RESULTADO  -->
+    <!-- ===================================== -->
+
+    <section id="error-screen"
+             class="error-screen"
+             hidden>
+
+        <div class="logo">STOP!</div>
+
+        <h1>Partida não encontrada!</h1>
+
+        <p>
+            Finalize uma partida para visualizar seus resultados.
+        </p>
+
+        <button id="error-menu-button"
+                class="primary-button"
+                type="button">
+
+            VOLTAR AO MENU
+
+        </button>
+
+    </section>
+
+    <script src="js/resultado.js"></script>
+
+</body>
+</html>

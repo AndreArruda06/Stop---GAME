@@ -28,6 +28,19 @@
     const answerSubmit = $('answer-submit');
 
     // ========================================
+    // ELEMENTOS DO ENCERRAMENTO DA RODADA
+    // ========================================
+
+    const roundEndOverlay = $('round-end-overlay');
+    const roundEndTitle = $('round-end-title');
+    const roundEndReason = $('round-end-reason');
+    const roundEndPlayer = $('round-end-player');
+    const roundResults = $('round-results');
+
+    const nextRoundButton = $('next-round-button');
+    const finishGameButton = $('finish-game-button');
+
+    // ========================================
     // CAPTURA ESTÁTICA DO FUNDO
     // ========================================
 
@@ -175,7 +188,12 @@
 
         backgroundCaptureTimer = setTimeout(() => {
 
-            if (drawOverlay.hidden && !roundStarted) {
+            if (
+                drawOverlay.hidden &&
+                roundEndOverlay.hidden &&
+                !roundStarted &&
+                !isPreparingNextRound
+            ) {
                 requestBackgroundCapture();
             }
 
@@ -305,6 +323,22 @@
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
     // ========================================
+    // CONTROLE DAS RODADAS
+    // ========================================
+
+    // Evita preparar a mesma rodada mais de uma vez.
+    let isPreparingNextRound = false;
+
+    // Indica que todas as rodadas foram concluídas.
+    let matchFinished = false;
+
+    // Guarda os resultados das rodadas concluídas.
+    const roundHistory = [];
+
+    // Guarda a identificação dos possíveis finalistas empatados.
+    let pendingMatchTiebreak = [];
+
+    // ========================================
     // ESTADO DA ELIMINAÇÃO
     // ========================================
 
@@ -413,6 +447,14 @@
 
         $('voice-panel').hidden =
             config.mode !== 'com-call';
+
+        // Garante que a janela de resultados comece escondida.
+        roundEndOverlay.hidden = true;
+
+        nextRoundButton.disabled = true;
+
+        finishGameButton.disabled = true;
+        finishGameButton.hidden = true;
 
         updateRound();
 
@@ -535,7 +577,7 @@
         if (!roundStarted) return;
 
         // Impede ações após o encerramento.
-        if (roundFinished) return;
+        if (roundFinished || matchFinished) return;
 
         // Impede escolhas após o tempo acabar.
         if (timeExpired) return;
@@ -622,6 +664,8 @@
             button.disabled =
                 !roundStarted ||
                 roundFinished ||
+                matchFinished ||
+                isPreparingNextRound ||
                 timeExpired ||
                 players[currentPlayerIndex].eliminated ||
                 used ||
@@ -667,7 +711,7 @@
 
         if (!roundStarted || timeExpired) return;
 
-        if (roundFinished) return;
+        if (roundFinished || matchFinished) return;
 
         if (players[currentPlayerIndex].eliminated) return;
 
@@ -1067,7 +1111,7 @@
 
         if (!currentCard || !roundStarted) return;
 
-        if (roundFinished) return;
+        if (roundFinished || matchFinished) return;
 
         if (timeExpired) return;
 
@@ -1221,7 +1265,7 @@
         // Impede eliminar o mesmo jogador duas vezes.
         if (player.eliminated) return false;
 
-        if (roundFinished) return false;
+        if (roundFinished || matchFinished) return false;
 
         // A eliminação é exclusiva da rodada atual.
         player.eliminated = true;
@@ -1338,6 +1382,15 @@
 
         if (!currentPlayer) return;
 
+        if (matchFinished) {
+
+            turnIndicator.textContent =
+                'PARTIDA ENCERRADA';
+
+            return;
+
+        }
+
         if (roundFinished) {
 
             turnIndicator.textContent =
@@ -1379,13 +1432,322 @@
     }
 
     // ========================================
+    // REGISTRAR RESULTADO DA RODADA
+    // ========================================
+
+    function saveRoundResult(winner, reason) {
+
+        // Não registra rodadas ainda empatadas.
+        if (pendingRoundTiebreak.length > 0) return;
+
+        // Impede registros duplicados.
+        const alreadySaved = roundHistory.some(result => {
+
+            return result.round === round;
+
+        });
+
+        if (alreadySaved) return;
+
+        updatePlayerHits();
+
+        const result = {
+
+            round: round,
+
+            cardId: currentCard
+                ? currentCard.id
+                : null,
+
+            theme: currentCard
+                ? currentCard.tema
+                : null,
+
+            winnerId: winner
+                ? winner.id
+                : null,
+
+            winnerName: winner
+                ? winner.nickname
+                : null,
+
+            reason: reason,
+
+            usedLetters: [...usedLetters],
+
+            players: players.map(player => ({
+
+                id: player.id,
+
+                nickname: player.nickname,
+
+                score: player.score,
+
+                roundHits: player.roundHits,
+
+                totalHits: player.totalHits,
+
+                eliminated: player.eliminated
+
+            }))
+
+        };
+
+        roundHistory.push(result);
+
+        if (modoTeste) {
+
+            console.info(
+                '[STOP!] Resultado da rodada registrado:',
+                result
+            );
+
+        }
+
+    }
+
+    // ========================================
+    // EXIBIR PONTUAÇÃO NO FIM DA RODADA
+    // ========================================
+
+    function renderRoundResults() {
+
+        roundResults.replaceChildren();
+
+        const ranking = getMatchRanking();
+
+        // Título da classificação.
+        const heading = document.createElement('h3');
+
+        heading.textContent = 'PONTUAÇÃO DA PARTIDA';
+
+        heading.style.marginBottom = '12px';
+
+        roundResults.appendChild(heading);
+
+        // Lista dos jogadores classificados.
+        const resultsList = document.createElement('ul');
+
+        resultsList.className = 'players-list';
+
+        resultsList.style.listStyle = 'none';
+        resultsList.style.padding = '0';
+        resultsList.style.margin = '0';
+
+        let position = 0;
+
+        ranking.forEach((player, index) => {
+
+            // Jogadores empatados recebem a mesma posição.
+            const previousPlayer = ranking[index - 1];
+
+            if (
+                index === 0 ||
+                player.score !== previousPlayer.score ||
+                player.totalHits !== previousPlayer.totalHits
+            ) {
+
+                position = index + 1;
+
+            }
+
+            const item = document.createElement('li');
+
+            item.className = 'player-item';
+
+            item.style.marginBottom = '8px';
+
+            // Destaca o vencedor da rodada.
+            const isWinner =
+                roundWinner &&
+                player.id === roundWinner.id;
+
+            if (isWinner) {
+
+                item.classList.add('active');
+
+            }
+
+            // Posição na classificação geral.
+            const avatar = document.createElement('span');
+
+            avatar.className = 'player-avatar';
+
+            avatar.textContent = `${position}º`;
+
+            // Nome e informações do jogador.
+            const details = document.createElement('div');
+
+            details.style.minWidth = '0';
+
+            const name = document.createElement('span');
+
+            name.className = 'player-name';
+
+            name.textContent = player.nickname;
+
+            name.title = player.nickname;
+
+            const hits = document.createElement('small');
+
+            hits.textContent =
+                `${player.roundHits} ac. na rodada • ${player.totalHits} no total`;
+
+            hits.style.display = 'block';
+
+            hits.style.fontSize = '11px';
+
+            hits.style.marginTop = '4px';
+
+            details.append(name, hits);
+
+            // Cartas conquistadas.
+            const score = document.createElement('span');
+
+            score.className = 'player-score';
+
+            score.textContent =
+                `${player.score} ${player.score === 1 ? 'carta' : 'cartas'}`;
+
+            if (isWinner) {
+
+                score.title = 'Vencedor desta rodada';
+
+            }
+
+            item.append(
+                avatar,
+                details,
+                score
+            );
+
+            resultsList.appendChild(item);
+
+        });
+
+        roundResults.appendChild(resultsList);
+
+    }
+
+    // ========================================
+    // JANELA DE ENCERRAMENTO DA RODADA
+    // ========================================
+
+    function showRoundEndOverlay(reason) {
+
+        // Atualiza a janela com o resultado atual.
+        const roundNumber =
+            String(round).padStart(2, '0');
+
+        const hasTiebreak =
+            pendingRoundTiebreak.length > 0;
+
+        roundEndTitle.textContent =
+            `RODADA ${roundNumber} ENCERRADA`;
+
+        if (hasTiebreak) {
+
+            // O empate não concede uma carta.
+            roundEndTitle.textContent =
+                'MORTE SÚBITA!';
+
+            roundEndPlayer.textContent =
+                'Temos um empate!';
+
+            roundEndReason.textContent = reason;
+
+        } else if (roundWinner) {
+
+            // Exibe o vencedor da rodada.
+            roundEndPlayer.textContent =
+                `${roundWinner.nickname} venceu!`;
+
+            roundEndReason.textContent =
+                `${reason} +1 carta conquistada.`;
+
+        } else {
+
+            roundEndPlayer.textContent =
+                'Rodada sem vencedor';
+
+            roundEndReason.textContent = reason;
+
+        }
+
+        renderRoundResults();
+
+        // Define a disponibilidade dos botões.
+        nextRoundButton.hidden = true;
+        nextRoundButton.disabled = true;
+
+        finishGameButton.hidden = true;
+        finishGameButton.disabled = true;
+
+        if (hasTiebreak) {
+
+            // A morte súbita será implementada na próxima etapa.
+            nextRoundButton.hidden = false;
+
+            nextRoundButton.textContent =
+                'MORTE SÚBITA';
+
+            nextRoundButton.disabled = true;
+
+        } else if (matchDeck.length > 0) {
+
+            // Ainda existem cartas para sortear.
+            nextRoundButton.hidden = false;
+
+            nextRoundButton.disabled = false;
+
+            nextRoundButton.textContent =
+                'PRÓXIMA RODADA →';
+
+        } else {
+
+            // Todas as cartas configuradas foram utilizadas.
+            finishGameButton.hidden = false;
+
+            finishGameButton.disabled = false;
+
+            finishGameButton.textContent =
+                'VER RESULTADO →';
+
+        }
+
+        // Impede interação com a roleta atrás da janela.
+        gameScreen.setAttribute('inert', '');
+
+        // Exibe a janela de encerramento.
+        roundEndOverlay.hidden = false;
+
+        // Posiciona o foco no botão disponível.
+        if (!nextRoundButton.disabled) {
+
+            nextRoundButton.focus();
+
+        } else if (!finishGameButton.disabled) {
+
+            finishGameButton.focus();
+
+        } else {
+
+            roundEndOverlay.setAttribute('tabindex', '-1');
+
+            roundEndOverlay.focus();
+
+        }
+
+    }
+
+    // ========================================
     // ENCERRAMENTO DA RODADA
     // ========================================
 
     function finishRound(winner, reason) {
 
         // Impede múltiplos encerramentos.
-        if (roundFinished) return;
+        if (roundFinished || matchFinished) return;
 
         // Encerra definitivamente a rodada atual.
         roundFinished = true;
@@ -1397,6 +1759,9 @@
 
         // Interrompe o cronômetro.
         stopTimer();
+
+        // Impede captura agendada durante o encerramento.
+        clearTimeout(backgroundCaptureTimer);
 
         // Limpa a seleção sem devolver a letra.
         selectedLetter = null;
@@ -1457,8 +1822,11 @@
 
         updateTimerDisplay();
 
-        // A janela de resultados e a próxima rodada
-        // serão implementadas posteriormente.
+        // Registra o resultado da rodada.
+        saveRoundResult(roundWinner, reason);
+
+        // Exibe a janela de vencedor e pontuação.
+        showRoundEndOverlay(reason);
 
         if (modoTeste) {
 
@@ -1575,7 +1943,7 @@
 
     function checkRoundEnd() {
 
-        if (roundFinished) return true;
+        if (roundFinished || matchFinished) return true;
 
         const activePlayers =
             getActivePlayers();
@@ -1628,7 +1996,7 @@
         // A alternância exige uma rodada iniciada.
         if (!currentCard || !roundStarted) return;
 
-        if (roundFinished) return;
+        if (roundFinished || matchFinished) return;
 
         // Encerra o cronômetro da jogada anterior.
         stopTimer();
@@ -1771,7 +2139,7 @@
 
                 item.classList.add('active');
 
-                if (!roundFinished) {
+                if (!roundFinished && !matchFinished) {
 
                     item.setAttribute(
                         'aria-current',
@@ -1886,11 +2254,14 @@
         const number =
             String(round).padStart(2, '0');
 
+        const total =
+            String(config.cards).padStart(2, '0');
+
         $('round-number').textContent =
-            `RODADA ${number}`;
+            `RODADA ${number}/${total}`;
 
         $('draw-round').textContent =
-            `RODADA ${number}`;
+            `RODADA ${number}/${total}`;
 
         $('card-number').textContent =
             `CARTA ${number}`;
@@ -1987,7 +2358,7 @@
     function startTimer() {
 
         // Não inicia o tempo após encerrar a rodada.
-        if (roundFinished) return;
+        if (roundFinished || matchFinished) return;
 
         // Evita dois cronômetros simultâneos.
         stopTimer();
@@ -2021,7 +2392,7 @@
 
         if (!timerRunning) return;
 
-        if (roundFinished) return;
+        if (roundFinished || matchFinished) return;
 
         const millisecondsLeft = Math.max(
             0,
@@ -2056,7 +2427,7 @@
 
     function validateTimer() {
 
-        if (roundFinished) return false;
+        if (roundFinished || matchFinished) return false;
 
         if (timeExpired) return false;
 
@@ -2085,7 +2456,7 @@
         // Evita executar o encerramento mais de uma vez.
         if (timeExpired) return;
 
-        if (roundFinished) return;
+        if (roundFinished || matchFinished) return;
 
         if (!roundStarted) return;
 
@@ -2194,6 +2565,299 @@
     }
 
     // ========================================
+    // REATIVAR TODOS OS JOGADORES
+    // ========================================
+
+    function reactivatePlayers() {
+
+        players.forEach(player => {
+
+            // Remove a condição de eliminado.
+            player.eliminated = false;
+
+            // Remove o estado de espectador.
+            player.spectator = false;
+
+            // Limpa o motivo da eliminação anterior.
+            player.eliminationReason = null;
+
+            // Reinicia apenas os acertos da rodada.
+            player.roundHits = 0;
+
+            // score e totalHits não são apagados.
+
+        });
+
+        // Recalcula os acertos utilizando o histórico.
+        updatePlayerHits();
+
+        if (modoTeste) {
+
+            console.info(
+                '[STOP!] Todos os jogadores foram reativados.'
+            );
+
+        }
+
+    }
+
+    // ========================================
+    // RESETAR A ROLETA
+    // ========================================
+
+    function resetWheel() {
+
+        // Libera novamente todas as letras.
+        usedLetters.clear();
+
+        // Remove qualquer seleção anterior.
+        selectedLetter = null;
+
+        $('selected-letter-box').hidden = true;
+
+        $('selected-letter').textContent = '—';
+
+        // Remove as classes de letras utilizadas.
+        updateLetters();
+
+        // As letras permanecerão desabilitadas
+        // até o primeiro clique no STOP da nova rodada.
+
+    }
+
+    // ========================================
+    // RESETAR A INTERFACE DO SORTEIO
+    // ========================================
+
+    function resetDrawInterface() {
+
+        // Remove estados das animações anteriores.
+        deck.classList.remove('shuffling');
+
+        drawCard.classList.remove('revealed');
+
+        drawOverlay.classList.remove('closing');
+
+        // Limpa o tema sorteado anteriormente.
+        $('drawn-theme').textContent = '';
+
+        // Restaura o botão de sorteio.
+        drawButton.hidden = false;
+
+        drawButton.disabled = true;
+
+        drawButton.textContent =
+            'SORTEAR CARTA';
+
+        // Esconde o botão de iniciar até o novo sorteio.
+        startRoundButton.hidden = true;
+
+        startRoundButton.disabled = true;
+
+        // Identifica o responsável pelo sorteio.
+        $('draw-status').textContent =
+            `${getCurrentPlayer().nickname} realizará o sorteio.`;
+
+        updateRemainingCards();
+
+    }
+
+    // ========================================
+    // PREPARAR A PRÓXIMA RODADA
+    // ========================================
+
+    async function prepareNextRound() {
+
+        // Exige que a rodada anterior tenha terminado.
+        if (!roundFinished) return;
+
+        if (matchFinished) return;
+
+        if (isPreparingNextRound) return;
+
+        // Não permite avançar com um empate pendente.
+        if (pendingRoundTiebreak.length > 0) return;
+
+        // Não permite ultrapassar a quantidade configurada.
+        if (round >= config.cards) return;
+
+        // Exige uma nova carta disponível.
+        if (matchDeck.length === 0) return;
+
+        isPreparingNextRound = true;
+
+        nextRoundButton.disabled = true;
+
+        finishGameButton.disabled = true;
+
+        nextRoundButton.textContent =
+            'PREPARANDO...';
+
+        // ====================================
+        // GUARDAR O VENCEDOR ANTERIOR
+        // ====================================
+
+        const previousWinner = roundWinner;
+
+        // O vencedor realiza o próximo sorteio.
+        // Também será o primeiro jogador da nova rodada.
+        if (previousWinner) {
+
+            const winnerIndex = players.findIndex(player => {
+
+                return player.id === previousWinner.id;
+
+            });
+
+            if (winnerIndex !== -1) {
+
+                currentPlayerIndex = winnerIndex;
+
+            }
+
+        } else {
+
+            // Segurança caso não exista vencedor.
+            currentPlayerIndex =
+                (currentPlayerIndex + 1) % players.length;
+
+        }
+
+        // ====================================
+        // INCREMENTAR A RODADA
+        // ====================================
+
+        round++;
+
+        // Remove o tema anterior.
+        currentCard = null;
+
+        // Reseta o estado da rodada.
+        roundStarted = false;
+
+        roundFinished = false;
+
+        roundWinner = null;
+
+        isShuffling = false;
+
+        pendingRoundTiebreak = [];
+
+        // ====================================
+        // RESTAURAR JOGADORES E RESPOSTAS
+        // ====================================
+
+        reactivatePlayers();
+
+        // Limpa somente o controle de respostas repetidas.
+        usedAnswers.clear();
+
+        // O histórico completo permanece armazenado.
+        lastConfirmedAnswer = null;
+
+        // ====================================
+        // RESETAR ROLETA E CRONÔMETRO
+        // ====================================
+
+        resetWheel();
+
+        resetTimer();
+
+        resetAnswerInput();
+
+        // Impede o início antes do sorteio.
+        stopButton.disabled = true;
+
+        $('stop-label').textContent =
+            'AGUARDE';
+
+        $('current-theme').textContent =
+            'Aguardando sorteio...';
+
+        turnIndicator.textContent =
+            'PREPARANDO RODADA';
+
+        $('game-status').textContent =
+            `${getCurrentPlayer().nickname} realizará o próximo sorteio.`;
+
+        // ====================================
+        // ATUALIZAR A INTERFACE
+        // ====================================
+
+        updateRound();
+
+        updateRemainingCards();
+
+        renderPlayers();
+
+        // Restaura o baralho visual.
+        resetDrawInterface();
+
+        // ====================================
+        // PREPARAR O FUNDO DO NOVO SORTEIO
+        // ====================================
+
+        clearTimeout(backgroundCaptureTimer);
+
+        // Mantém a janela atual aberta durante a captura.
+        // Isso evita exibir uma tela azul ou uma roleta vazia.
+        gameScreen.setAttribute('inert', '');
+
+        try {
+
+            // Finaliza uma eventual captura anterior.
+            if (backgroundCapturePromise) {
+
+                await backgroundCapturePromise;
+
+            }
+
+            // Captura o jogo já resetado para a próxima rodada.
+            await requestBackgroundCapture();
+
+        } finally {
+
+            // Libera a transição para o sorteio.
+            roundEndOverlay.hidden = true;
+
+            drawOverlay.hidden = false;
+
+            drawButton.disabled = false;
+
+            isPreparingNextRound = false;
+
+            drawButton.focus();
+
+        }
+
+        if (modoTeste) {
+
+            console.info(
+                '[STOP!] Nova rodada preparada:',
+                {
+
+                    rodada: round,
+
+                    totalRodadas: config.cards,
+
+                    responsavel: getCurrentPlayer().nickname,
+
+                    cartasRestantes: matchDeck.length,
+
+                    letrasUtilizadas: usedLetters.size,
+
+                    jogadoresAtivos: getActivePlayers().length
+
+                }
+            );
+
+            logMatchRanking();
+
+        }
+
+    }
+
+    // ========================================
     // SORTEIO DA CARTA
     // ========================================
 
@@ -2202,6 +2866,12 @@
         if (players.length < 2) return;
 
         if (isShuffling) return;
+
+        if (isPreparingNextRound) return;
+
+        if (roundFinished || matchFinished) return;
+
+        if (drawButton.disabled) return;
 
         if (currentCard) return;
 
@@ -2267,6 +2937,12 @@
 
         if (!currentCard || isShuffling) return;
 
+        if (matchFinished || roundFinished) return;
+
+        if (isPreparingNextRound) return;
+
+        if (startRoundButton.disabled) return;
+
         startRoundButton.disabled = true;
 
         $('current-theme').textContent =
@@ -2316,6 +2992,8 @@
             // Atualiza a identificação do primeiro jogador.
             updateTurnIndicator();
 
+            renderPlayers();
+
             $('game-status').textContent =
                 `${getCurrentPlayer().nickname}, pressione STOP! para iniciar.`;
 
@@ -2326,7 +3004,12 @@
                 requestAnimationFrame(() => {
 
                     // Evita iniciar uma captura durante a contagem.
-                    if (!roundStarted) {
+                    if (
+                        !roundStarted &&
+                        !roundFinished &&
+                        !matchFinished &&
+                        !isPreparingNextRound
+                    ) {
 
                         requestBackgroundCapture();
 
@@ -2348,7 +3031,9 @@
         if (!currentCard) return;
 
         // Impede ações após encerrar a rodada.
-        if (roundFinished) return;
+        if (roundFinished || matchFinished) return;
+
+        if (isPreparingNextRound) return;
 
         // Impede ações após o tempo esgotar.
         if (timeExpired) return;
@@ -2390,6 +3075,276 @@
     }
 
     // ========================================
+    // IDENTIFICAR FINALISTAS EMPATADOS
+    // ========================================
+
+    function getMatchFinalists() {
+
+        const ranking = getMatchRanking();
+
+        if (ranking.length === 0) return [];
+
+        const leader = ranking[0];
+
+        // Identifica jogadores empatados nos dois critérios.
+        return ranking.filter(player => {
+
+            return (
+                player.score === leader.score &&
+                player.totalHits === leader.totalHits
+            );
+
+        });
+
+    }
+
+    // ========================================
+    // ENCERRAMENTO DA PARTIDA
+    // ========================================
+
+    function finishMatch() {
+
+        // Exige que a última rodada esteja encerrada.
+        if (!roundFinished) return;
+
+        if (matchFinished) return;
+
+        if (isPreparingNextRound) return;
+
+        if (pendingRoundTiebreak.length > 0) return;
+
+        // Não permite encerrar antes da última carta.
+        if (matchDeck.length > 0) return;
+
+        if (round !== config.cards) return;
+
+        // ====================================
+        // CLASSIFICAÇÃO FINAL
+        // ====================================
+
+        const finalists = getMatchFinalists();
+
+        // Caso exista empate absoluto,
+        // será necessário realizar uma morte súbita.
+        if (finalists.length > 1) {
+
+            pendingMatchTiebreak = finalists.map(player => {
+
+                return player.id;
+
+            });
+
+            const names = finalists.map(player => {
+
+                return player.nickname;
+
+            }).join(', ');
+
+            roundEndTitle.textContent =
+                'MORTE SÚBITA FINAL!';
+
+            roundEndPlayer.textContent =
+                'Temos um empate pelo campeonato!';
+
+            roundEndReason.textContent =
+                `${names} terminaram empatados em cartas e acertos totais.`;
+
+            finishGameButton.textContent =
+                'DESEMPATE NECESSÁRIO';
+
+            finishGameButton.disabled = true;
+
+            turnIndicator.textContent =
+                'MORTE SÚBITA';
+
+            if (modoTeste) {
+
+                console.info(
+                    '[STOP!] Morte súbita final necessária:',
+                    pendingMatchTiebreak
+                );
+
+            }
+
+            // A morte súbita será implementada posteriormente.
+            // Não declara um campeão arbitrariamente.
+            return;
+
+        }
+
+        if (finalists.length === 0) {
+
+            roundEndReason.textContent =
+                'Não foi possível identificar o campeão.';
+
+            return;
+
+        }
+
+        const champion = finalists[0];
+
+        const ranking = getMatchRanking();
+
+        // ====================================
+        // DADOS DO RESULTADO FINAL
+        // ====================================
+
+        const matchResult = {
+
+            roomCode: config.roomCode,
+
+            mode: config.mode,
+
+            totalRounds: config.cards,
+
+            completedRounds: roundHistory.length,
+
+            champion: {
+
+                id: champion.id,
+
+                nickname: champion.nickname,
+
+                score: champion.score,
+
+                totalHits: champion.totalHits
+
+            },
+
+            ranking: ranking.map(player => ({
+
+                id: player.id,
+
+                nickname: player.nickname,
+
+                score: player.score,
+
+                totalHits: player.totalHits
+
+            })),
+
+            rounds: roundHistory,
+
+            modoTeste: modoTeste
+
+        };
+
+        // ====================================
+        // SALVAR RESULTADO
+        // ====================================
+
+        try {
+
+            sessionStorage.setItem(
+                'matchResult',
+                JSON.stringify(matchResult)
+            );
+
+        } catch (error) {
+
+            console.error(
+                '[STOP!] Erro ao salvar resultado:',
+                error
+            );
+
+            roundEndReason.textContent =
+                'Não foi possível salvar o resultado da partida.';
+
+            return;
+
+        }
+
+        matchFinished = true;
+
+        stopTimer();
+
+        clearTimeout(backgroundCaptureTimer);
+
+        // ====================================
+        // EXIBIÇÃO PROVISÓRIA DO CAMPEÃO
+        // ====================================
+
+        // A tela exclusiva resultado.html
+        // será conectada na etapa de resultados finais.
+
+        roundEndTitle.textContent =
+            'PARTIDA ENCERRADA!';
+
+        roundEndPlayer.textContent =
+            `${champion.nickname} é o campeão!`;
+
+        roundEndReason.textContent =
+            `${champion.score} ${champion.score === 1 ? 'carta conquistada' : 'cartas conquistadas'} • ${champion.totalHits} acertos totais`;
+
+        turnIndicator.textContent =
+            'PARTIDA ENCERRADA';
+
+        $('stop-label').textContent =
+            'FINALIZADO';
+
+        $('game-status').textContent =
+            `${champion.nickname} venceu a partida!`;
+
+        nextRoundButton.hidden = true;
+
+        nextRoundButton.disabled = true;
+
+        // Remove qualquer destaque de vencedor de rodada
+        // para apresentar a classificação geral.
+        roundWinner = null;
+
+        renderRoundResults();
+
+        // Botão temporário até a tela final ser implementada.
+        finishGameButton.hidden = false;
+
+        finishGameButton.disabled = false;
+
+        finishGameButton.textContent =
+            'VOLTAR AO MENU';
+
+        finishGameButton.focus();
+
+        if (modoTeste) {
+
+            console.info(
+                '[STOP!] Partida encerrada:',
+                matchResult
+            );
+
+            logMatchRanking();
+
+        }
+
+    }
+
+    // ========================================
+    // VOLTAR AO MENU APÓS O RESULTADO
+    // ========================================
+
+    function returnToMenu() {
+
+        if (!matchFinished) return;
+
+        stopTimer();
+
+        clearTimeout(backgroundCaptureTimer);
+
+        // Limpa apenas as informações da sala normal.
+        // O resultado permanece salvo para uso posterior.
+        if (!modoTeste) {
+
+            sessionStorage.removeItem('roomConfig');
+
+            sessionStorage.removeItem('joinConfig');
+
+        }
+
+        window.location.href = 'index.html';
+
+    }
+
+    // ========================================
     // EVENTOS
     // ========================================
 
@@ -2407,6 +3362,27 @@
         'click',
         handleStop
     );
+
+    // Avança para a próxima rodada.
+    nextRoundButton.addEventListener(
+        'click',
+        prepareNextRound
+    );
+
+    // Finaliza a partida ou retorna ao menu.
+    finishGameButton.addEventListener('click', () => {
+
+        if (matchFinished) {
+
+            returnToMenu();
+
+            return;
+
+        }
+
+        finishMatch();
+
+    });
 
     $('back-button').addEventListener('click', () => {
 
@@ -2442,7 +3418,7 @@
         // Impede o envio fora da rodada.
         if (!roundStarted || timeExpired) return;
 
-        if (roundFinished) return;
+        if (roundFinished || matchFinished) return;
 
         // Impede o envio por jogador eliminado.
         if (getCurrentPlayer().eliminated) return;
@@ -2474,7 +3450,8 @@
                 config.mode === 'sem-call' &&
                 selectedLetter &&
                 !timeExpired &&
-                !roundFinished
+                !roundFinished &&
+                !matchFinished
             ) {
 
                 $('game-status').textContent =
