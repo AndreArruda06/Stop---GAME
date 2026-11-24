@@ -441,6 +441,27 @@ button:disabled {
     font-weight: 900;
 }
 
+/* Configurações bloqueadas para convidados */
+
+.setting-lock {
+    color: #718697;
+    flex-shrink: 0;
+}
+
+.guest-view .stepper button {
+    display: none;
+}
+
+.guest-view .stepper {
+    gap: 8px;
+    padding-right: 4px;
+}
+
+.guest-view .stepper output {
+    min-width: auto;
+    text-align: right;
+}
+
 /* Comunicação */
 
 .communication-panel {
@@ -533,6 +554,17 @@ button:disabled {
 
 .microphone-button.muted {
     background: #a34545;
+}
+
+/* Microfone desligado na visão do convidado */
+
+.guest-view .microphone-button[aria-pressed="false"] {
+    background: var(--white);
+    color: var(--blue-mid);
+}
+
+.guest-view .microphone-button[aria-pressed="false"]:hover:not(:disabled) {
+    background: #e3edf7;
 }
 
 .communication-note {
@@ -649,6 +681,22 @@ button:disabled {
     background: #c5d0da;
     color: #526a7d;
     box-shadow: 0 3px 0 #8d9eae;
+}
+
+/* Botão de confirmação do convidado */
+
+.ready-button {
+    background: var(--yellow);
+    color: var(--blue-deep);
+}
+
+.ready-button[aria-pressed="true"] {
+    background: var(--yellow);
+    color: var(--blue-deep);
+}
+
+.ready-button[aria-pressed="true"]:hover:not(:disabled) {
+    background: #ffe36b;
 }
 
 .leave-button {

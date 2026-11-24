@@ -9,6 +9,8 @@ const copyCode = document.getElementById('copy-code');
 const playersList = document.getElementById('players-list');
 const playerCount = document.getElementById('player-count');
 const playerSummary = document.getElementById('player-summary');
+const roleMessage = document.getElementById('role-message');
+const settingsMessage = document.getElementById('settings-message');
 
 // Painéis de comunicação
 const voicePanel = document.getElementById('voice-panel');
@@ -16,8 +18,15 @@ const chatPanel = document.getElementById('chat-panel');
 
 // Botões e mensagens
 const startButton = document.getElementById('start-button');
+const readyButton = document.getElementById('ready-button');
 const leaveButton = document.getElementById('leave-button');
 const lobbyStatus = document.getElementById('lobby-status');
+
+// Parâmetros da página
+const params = new URLSearchParams(window.location.search);
+
+// Modo temporário para testar a visão do convidado
+const guestTest = params.get('teste') === 'jogador';
 
 // Recupera as configurações da sala
 let roomConfig;
@@ -28,6 +37,7 @@ try {
     roomConfig = null;
 }
 
+// Verifica se existe uma configuração válida
 if (!roomConfig || !['com-call', 'sem-call'].includes(roomConfig.mode)) {
 
     window.location.replace('salas.html');
@@ -39,6 +49,9 @@ if (!roomConfig || !['com-call', 'sem-call'].includes(roomConfig.mode)) {
 }
 
 function initializeLobby() {
+
+    // Identifica o papel do participante
+    const isHost = !guestTest;
 
     // Configurações e limites
     const settings = {
@@ -101,21 +114,50 @@ function initializeLobby() {
 
         roomConfig.roomCode = generateRoomCode();
 
+        sessionStorage.setItem(
+            'roomConfig',
+            JSON.stringify(roomConfig)
+        );
+
     }
 
     // Jogadores presentes na sala local
     const players = [
         {
+            id: 'host',
             nickname: roomConfig.nickname,
             host: true,
             ready: true
         }
     ];
 
+    // Identificação do jogador atual
+    const currentPlayerId = isHost
+        ? 'host'
+        : 'guest-test';
+
+    // Participante fictício exclusivo do modo de teste
+    if (guestTest) {
+
+        players.push({
+            id: 'guest-test',
+            nickname: 'Jogador teste',
+            host: false,
+            ready: false
+        });
+
+    }
+
+    // Recupera o jogador atual
+    const currentPlayer = players.find(
+        player => player.id === currentPlayerId
+    );
+
     // Informações da sala
     roomName.textContent = roomConfig.roomName;
     roomCode.textContent = roomConfig.roomCode;
 
+    // Identifica a modalidade
     if (roomConfig.mode === 'com-call') {
 
         roomMode.textContent = '🎙 COM CALL';
@@ -132,8 +174,73 @@ function initializeLobby() {
 
     }
 
+    // Configura a interface conforme o papel do jogador
+    function updateRole() {
+
+        document.body.classList.toggle(
+            'guest-view',
+            !isHost
+        );
+
+        // Alterna os botões principais
+        startButton.hidden = !isHost;
+        readyButton.hidden = isHost;
+
+        // Exibe os cadeados para convidados
+        document.querySelectorAll('.setting-lock')
+            .forEach(lock => {
+
+                lock.hidden = isHost;
+
+            });
+
+        // Mensagem de identificação
+        if (isHost) {
+
+            roleMessage.textContent =
+                'Você é o anfitrião desta sala.';
+
+        } else {
+
+            roleMessage.textContent =
+                'Você é um jogador desta sala.';
+
+        }
+
+        // Preserva o ícone da mensagem de configurações
+        const lockIcon = settingsMessage.querySelector('svg');
+
+        settingsMessage.replaceChildren();
+
+        if (lockIcon) {
+            settingsMessage.appendChild(lockIcon);
+        }
+
+        settingsMessage.append(
+            document.createTextNode(
+                isHost
+                    ? 'Só você pode editar.'
+                    : 'Somente o anfitrião pode editar.'
+            )
+        );
+
+        // Identifica explicitamente a simulação local
+        if (guestTest) {
+
+            roleMessage.textContent +=
+                ' (Modo de teste local)';
+
+        }
+
+    }
+
     // Salva as configurações localmente
     function saveSettings() {
+
+        // Convidados não podem alterar configurações
+        if (!isHost) {
+            return;
+        }
 
         roomConfig.players = settings.players.value;
         roomConfig.time = settings.time.value;
@@ -158,25 +265,27 @@ function initializeLobby() {
         document.getElementById('cards').textContent =
             settings.cards.value;
 
-        // Bloqueia os controles ao atingir os limites
-        document.querySelectorAll('[data-target]').forEach(button => {
+        // Bloqueia os controles conforme permissões e limites
+        document.querySelectorAll('[data-target]')
+            .forEach(button => {
 
-            const target = button.dataset.target;
-            const step = Number(button.dataset.step);
+                const target = button.dataset.target;
+                const step = Number(button.dataset.step);
 
-            const setting = settings[target];
+                const setting = settings[target];
 
-            const minimum = target === 'players'
-                ? Math.max(setting.min, players.length)
-                : setting.min;
+                const minimum = target === 'players'
+                    ? Math.max(setting.min, players.length)
+                    : setting.min;
 
-            const nextValue = setting.value + step;
+                const nextValue = setting.value + step;
 
-            button.disabled =
-                nextValue < minimum ||
-                nextValue > setting.max;
+                button.disabled =
+                    !isHost ||
+                    nextValue < minimum ||
+                    nextValue > setting.max;
 
-        });
+            });
 
         saveSettings();
 
@@ -192,7 +301,9 @@ function initializeLobby() {
         avatar.className = 'player-avatar';
 
         if (player.host) {
+
             avatar.classList.add('host');
+
         }
 
         avatar.textContent = '☺';
@@ -200,7 +311,8 @@ function initializeLobby() {
         const name = document.createElement('span');
         name.className = 'player-name';
 
-        name.textContent = player.host
+        // Identifica corretamente o próprio jogador
+        name.textContent = player.id === currentPlayerId
             ? `${player.nickname} (você)`
             : player.nickname;
 
@@ -258,6 +370,9 @@ function initializeLobby() {
     // Atualiza a lista de jogadores
     function renderPlayers() {
 
+        // Preserva a posição da rolagem
+        const scrollPosition = playersList.scrollTop;
+
         playersList.replaceChildren();
 
         players.forEach(player => {
@@ -268,8 +383,10 @@ function initializeLobby() {
 
         });
 
-        const availableSlots =
-            settings.players.value - players.length;
+        const availableSlots = Math.max(
+            0,
+            settings.players.value - players.length
+        );
 
         for (let i = 0; i < availableSlots; i++) {
 
@@ -296,11 +413,67 @@ function initializeLobby() {
         document.getElementById('chat-online').textContent =
             `${players.length} local`;
 
+        playersList.scrollTop = scrollPosition;
+
         updateLobbyStatus();
 
     }
 
-    // Atualiza o estado do botão de iniciar
+    // Atualiza o botão de confirmação do convidado
+    function updateReadyButton() {
+
+        if (isHost) {
+            return;
+        }
+
+        readyButton.setAttribute(
+            'aria-pressed',
+            String(currentPlayer.ready)
+        );
+
+        // Jogador pronto: permite cancelar a confirmação
+        if (currentPlayer.ready) {
+
+            readyButton.innerHTML = `
+                <svg width="18" height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round">
+
+                    <path d="M6 6L18 18M18 6L6 18"/>
+
+                </svg>
+
+                CANCELAR
+            `;
+
+        } else {
+
+            // Jogador aguardando: permite confirmar presença
+            readyButton.innerHTML = `
+                <svg width="18" height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round">
+
+                    <path d="M5 12l4 4L19 6"/>
+
+                </svg>
+
+                ESTOU PRONTO
+            `;
+
+        }
+
+    }
+
+    // Atualiza o estado do Lobby
     function updateLobbyStatus() {
 
         const enoughPlayers = players.length >= 2;
@@ -309,27 +482,49 @@ function initializeLobby() {
             player => player.ready
         );
 
+        // Estado do anfitrião
         startButton.disabled =
-            !enoughPlayers || !everyoneReady;
+            !isHost ||
+            !enoughPlayers ||
+            !everyoneReady;
 
-        if (!enoughPlayers) {
+        if (isHost) {
 
-            lobbyStatus.textContent =
-                'Esperando a turma: são necessários pelo menos 2 jogadores.';
+            if (!enoughPlayers) {
 
-        } else if (!everyoneReady) {
+                lobbyStatus.textContent =
+                    'Esperando a turma: são necessários pelo menos 2 jogadores.';
 
-            lobbyStatus.textContent =
-                'Aguardando os jogadores ficarem prontos...';
+            } else if (!everyoneReady) {
+
+                lobbyStatus.textContent =
+                    'Aguardando os jogadores ficarem prontos...';
+
+            } else {
+
+                lobbyStatus.textContent =
+                    'A turma está pronta. Que comece o desafio!';
+
+            }
 
         } else {
 
-            lobbyStatus.textContent =
-                'A turma está pronta. Que comece o desafio!';
+            // Estado do convidado
+            if (currentPlayer.ready) {
+
+                lobbyStatus.textContent =
+                    'Você está pronto! Aguardando o anfitrião iniciar a partida.';
+
+            } else {
+
+                lobbyStatus.textContent =
+                    'Confirme que está pronto para começar!';
+
+            }
 
         }
 
-        // Alterna o ícone entre cadeado e iniciar
+        // Alterna o ícone do botão de iniciar
         const icon = startButton.querySelector('svg');
 
         if (startButton.disabled) {
@@ -348,37 +543,59 @@ function initializeLobby() {
 
         }
 
+        updateReadyButton();
+
     }
 
     // Botões de aumentar e diminuir configurações
-    document.querySelectorAll('[data-target]').forEach(button => {
+    document.querySelectorAll('[data-target]')
+        .forEach(button => {
 
-        button.addEventListener('click', () => {
+            button.addEventListener('click', () => {
 
-            const target = button.dataset.target;
-            const step = Number(button.dataset.step);
+                // Impede alterações feitas por convidados
+                if (!isHost) {
+                    return;
+                }
 
-            const setting = settings[target];
+                const target = button.dataset.target;
+                const step = Number(button.dataset.step);
 
-            const minimum = target === 'players'
-                ? Math.max(setting.min, players.length)
-                : setting.min;
+                const setting = settings[target];
 
-            const nextValue = setting.value + step;
+                const minimum = target === 'players'
+                    ? Math.max(setting.min, players.length)
+                    : setting.min;
 
-            if (
-                nextValue >= minimum &&
-                nextValue <= setting.max
-            ) {
+                const nextValue = setting.value + step;
 
-                setting.value = nextValue;
+                if (
+                    nextValue >= minimum &&
+                    nextValue <= setting.max
+                ) {
 
-                updateSettings();
-                renderPlayers();
+                    setting.value = nextValue;
 
-            }
+                    updateSettings();
+                    renderPlayers();
+
+                }
+
+            });
 
         });
+
+    // Confirmação de presença do convidado
+    readyButton.addEventListener('click', () => {
+
+        if (isHost) {
+            return;
+        }
+
+        // Alterna entre pronto e aguardando
+        currentPlayer.ready = !currentPlayer.ready;
+
+        renderPlayers();
 
     });
 
@@ -415,7 +632,7 @@ function initializeLobby() {
     // Iniciar partida
     startButton.addEventListener('click', () => {
 
-        if (startButton.disabled) {
+        if (!isHost || startButton.disabled) {
             return;
         }
 
@@ -427,6 +644,16 @@ function initializeLobby() {
     // Sair da sala
     leaveButton.addEventListener('click', () => {
 
+        // Encerra somente a simulação do convidado
+        if (guestTest) {
+
+            window.location.href = 'lobby.html';
+
+            return;
+
+        }
+
+        // Remove as configurações da sala local
         sessionStorage.removeItem('roomConfig');
 
         window.location.href =
@@ -443,6 +670,7 @@ function initializeLobby() {
         });
 
     // Inicialização
+    updateRole();
     updateSettings();
     renderPlayers();
 
