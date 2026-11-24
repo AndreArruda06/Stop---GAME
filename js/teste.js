@@ -4,6 +4,7 @@
 // ========================================
 
 // Acesso: jogo.html?teste=partida
+//Acesso2:jogo.html?teste=partida&modo=com-call
 // Modo exclusivo para desenvolvimento.
 // Não interfere nas partidas normais.
 
