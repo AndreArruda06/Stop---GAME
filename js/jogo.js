@@ -56,6 +56,8 @@
     const roundWinnerNext = $('round-winner-next');
     const roundConfetti = $('round-confetti');
 
+    const msStartButton = $('ms-start-button');
+
     // ========================================
     // CAPTURA ESTÁTICA DO FUNDO
     // ========================================
@@ -217,7 +219,8 @@
                 drawOverlay.hidden &&
                 roundEndOverlay.hidden &&
                 !roundStarted &&
-                !isPreparingNextRound
+                !isPreparingNextRound &&
+                !inTiebreak()
             ) {
                 requestBackgroundCapture();
             }
@@ -365,6 +368,20 @@
     const roundHistory = [];
 
     let pendingMatchTiebreak = [];
+
+    // ========================================
+    // INTEGRAÇÃO DO MÓDULO MORTE SÚBITA
+    // ========================================
+
+    const ms = window.MorteSubita;
+
+    let originalRound = null;
+
+    let finalChampion = null;
+
+    const tiebreakHistory = [];
+
+    const inTiebreak = () => Boolean(ms && ms.estaAtiva());
 
     // ========================================
     // ESTADO DA ELIMINAÇÃO
@@ -594,6 +611,10 @@
 
     function selectLetter(letter) {
 
+        // Na morte súbita, somente o sistema escolhe a letra.
+
+        if (inTiebreak()) return;
+
         if (!roundStarted) return;
 
         if (roundFinished || matchFinished) return;
@@ -673,6 +694,7 @@
             );
 
             button.disabled =
+                inTiebreak() ||
                 !roundStarted ||
                 roundFinished ||
                 matchFinished ||
@@ -1071,9 +1093,13 @@
 
             contested: false,
 
-            // Preparação para a morte súbita.
+            // Identifica respostas exclusivas da morte súbita.
 
-            isTiebreak: false
+            isTiebreak: inTiebreak(),
+
+            tiebreakType: inTiebreak() ? ms.obterTipo() : null,
+
+            tiebreakAttempt: inTiebreak() ? ms.obterTentativa() : null
 
         };
 
@@ -1086,6 +1112,14 @@
         answerHistory.push(confirmedAnswer);
 
         lastConfirmedAnswer = confirmedAnswer;
+
+        // Os acertos do desempate não entram na pontuação normal.
+
+        if (inTiebreak()) {
+
+            ms.registrarAcerto(player.id);
+
+        }
 
         updatePlayerHits();
 
@@ -1187,15 +1221,19 @@
 
         let confirmationMessage;
 
+        const reward = inTiebreak()
+            ? '+1 acerto no desempate.'
+            : '+1 acerto.';
+
         if (config.mode === 'sem-call') {
 
             confirmationMessage =
-                `${confirmedAnswer.playerName}: "${confirmedAnswer.answer}" confirmada! +1 acerto.`;
+                `${confirmedAnswer.playerName}: "${confirmedAnswer.answer}" confirmada! ${reward}`;
 
         } else {
 
             confirmationMessage =
-                `${confirmedAnswer.playerName} confirmou a letra ${confirmedAnswer.letter}! +1 acerto.`;
+                `${confirmedAnswer.playerName} confirmou a letra ${confirmedAnswer.letter}! ${reward}`;
 
         }
 
@@ -1295,6 +1333,10 @@
             theme: currentCard
                 ? currentCard.tema
                 : null,
+
+            isTiebreak: inTiebreak(),
+
+            tiebreakAttempt: inTiebreak() ? ms.obterTentativa() : null,
 
             order: eliminationHistory.length + 1
 
@@ -1878,10 +1920,9 @@
             nextRoundButton.textContent =
                 'MORTE SÚBITA';
 
-            // Continua bloqueado até a implementação
-            // definitiva do desempate.
+            // Permite iniciar o desempate sem avançar a rodada.
 
-            nextRoundButton.disabled = true;
+            nextRoundButton.disabled = !ms;
 
         }
 
@@ -2156,7 +2197,7 @@
 
         }
 
-        // A morte súbita será implementada em outra etapa.
+        // O botão MORTE SÚBITA abrirá a introdução dramática.
         // Nenhum jogador recebe a carta enquanto o empate
         // não for resolvido.
 
@@ -2169,6 +2210,14 @@
     function checkRoundEnd() {
 
         if (roundFinished || matchFinished) return true;
+
+        // O desempate utiliza os próprios critérios de vitória.
+
+        if (inTiebreak()) {
+
+            return checkTiebreakEnd();
+
+        }
 
         const activePlayers =
             getActivePlayers();
@@ -2293,7 +2342,15 @@
 
         // O novo jogador recebe todo o tempo configurado.
 
-        startTimer();
+        if (inTiebreak()) {
+
+            startAutomaticTiebreakTurn();
+
+        } else {
+
+            startTimer();
+
+        }
 
         if (modoTeste) {
 
@@ -2424,6 +2481,25 @@
 
             }
 
+            // Durante a morte súbita, exibe os acertos independentes.
+
+            if (inTiebreak()) {
+
+                const hits = ms.obterAcertos(player.id);
+
+                score.textContent = !ms.jogadorParticipa(player.id)
+                    ? 'ESPECTADOR'
+                    : player.eliminated
+                        ? `ESPECTADOR · ${hits} ac.`
+                        : `${hits} ac.`;
+
+                score.title = `${hits} acertos no desempate`;
+
+                item.setAttribute('aria-label',
+                    `${player.nickname}, ${player.eliminated ? 'espectador' : 'finalista'}, ${hits} acertos no desempate`);
+
+            }
+
             item.append(
                 avatar,
                 name,
@@ -2449,6 +2525,21 @@
 
     function updateRound() {
 
+        if (inTiebreak()) {
+
+            $('round-number').textContent = ms.obterTipo() === 'final'
+                ? 'MORTE SÚBITA FINAL'
+                : 'MORTE SÚBITA';
+
+            $('draw-round').textContent =
+                `DESEMPATE ${String(ms.obterTentativa()).padStart(2, '0')}`;
+
+            $('card-number').textContent = 'TEMA EXTRA';
+
+            return;
+
+        }
+
         const number =
             String(round).padStart(2, '0');
 
@@ -2468,6 +2559,15 @@
 
     function updateRemainingCards() {
 
+        if (inTiebreak()) {
+
+            $('remaining-cards').textContent =
+                'TEMA EXTRA — SEM CONSUMIR CARTAS';
+
+            return;
+
+        }
+
         const total = matchDeck.length;
 
         $('remaining-cards').textContent =
@@ -2482,6 +2582,12 @@
     // ========================================
 
     function updateTimerDisplay() {
+
+        if (inTiebreak()) {
+
+            ms.atualizarEfeitosTempo(remainingTime, timerRunning);
+
+        }
 
         const displayValue = String(remainingTime);
 
@@ -2538,6 +2644,12 @@
         timerRunning = false;
 
         timerDeadline = 0;
+
+        if (inTiebreak()) {
+
+            ms.atualizarEfeitosTempo(remainingTime, false);
+
+        }
 
     }
 
@@ -2703,6 +2815,12 @@
             'timeout'
         );
 
+        if (inTiebreak()) {
+
+            ms.executarImpacto();
+
+        }
+
         // A letra escolhida continua consumida.
 
         selectedLetter = null;
@@ -2834,11 +2952,15 @@
         drawButton.disabled = true;
 
         drawButton.textContent =
-            'SORTEAR CARTA';
+            inTiebreak() ? 'SORTEAR TEMA EXTRA' : 'SORTEAR CARTA';
 
         startRoundButton.hidden = true;
 
         startRoundButton.disabled = true;
+
+        startRoundButton.textContent = inTiebreak()
+            ? 'COMEÇAR DESEMPATE →'
+            : 'COMEÇAR RODADA →';
 
         $('draw-status').textContent =
             `${getCurrentPlayer().nickname} realizará o sorteio.`;
@@ -2861,7 +2983,21 @@
 
         // Não permite avançar com um empate pendente.
 
-        if (pendingRoundTiebreak.length > 0) return;
+        if (inTiebreak()) return;
+
+        if (pendingRoundTiebreak.length > 0) {
+
+            const finalists = players.filter(player => {
+
+                return pendingRoundTiebreak.includes(player.id);
+
+            });
+
+            beginTiebreak('rodada', finalists);
+
+            return;
+
+        }
 
         if (round >= config.cards) return;
 
@@ -3064,7 +3200,7 @@
 
         if (currentCard) return;
 
-        if (matchDeck.length === 0) return;
+        if (!inTiebreak() && matchDeck.length === 0) return;
 
         isShuffling = true;
 
@@ -3087,7 +3223,27 @@
 
         setTimeout(() => {
 
-            currentCard = matchDeck.pop();
+            // O tema extra é sorteado fora do baralho principal.
+
+            currentCard = inTiebreak()
+                ? ms.sortearTema(BANCO_CARTAS, originalRound?.card?.id)
+                : matchDeck.pop();
+
+            if (!currentCard) {
+
+                deck.classList.remove('shuffling');
+
+                isShuffling = false;
+
+                drawButton.disabled = false;
+
+                drawButton.textContent = 'TENTAR NOVAMENTE';
+
+                $('draw-status').textContent = 'Nenhum tema disponível.';
+
+                return;
+
+            }
 
             deck.classList.remove('shuffling');
 
@@ -3146,7 +3302,11 @@
 
         roundWinner = null;
 
-        pendingRoundTiebreak = [];
+        if (!inTiebreak()) {
+
+            pendingRoundTiebreak = [];
+
+        }
 
         updatePlayerHits();
 
@@ -3184,6 +3344,12 @@
 
             stopButton.focus();
 
+            if (inTiebreak()) {
+
+                ms.executarImpacto();
+
+            }
+
             // Atualiza o fundo em segundo plano.
 
             requestAnimationFrame(() => {
@@ -3196,7 +3362,8 @@
                         !roundStarted &&
                         !roundFinished &&
                         !matchFinished &&
-                        !isPreparingNextRound
+                        !isPreparingNextRound &&
+                        !inTiebreak()
                     ) {
 
                         requestBackgroundCapture();
@@ -3214,6 +3381,127 @@
     // ========================================
     // BOTÃO STOP! — CONTROLE DA JOGADA
     // ========================================
+
+    // ========================================
+    // SORTEIO AUTOMÁTICO DA LETRA NO DESEMPATE
+    // ========================================
+
+    async function startAutomaticTiebreakTurn() {
+
+        if (!inTiebreak() || !roundStarted) return;
+
+        if (roundFinished || matchFinished || isPreparingNextRound) return;
+
+        if (ms.estaSorteandoLetra() || selectedLetter !== null) return;
+
+        const player = getCurrentPlayer();
+
+        const attempt = ms.obterTentativa();
+
+        const card = currentCard;
+
+        if (!player || player.eliminated) return;
+
+        // O tempo de animação não é descontado do jogador.
+
+        resetTimer();
+
+        resetAnswerInput();
+
+        stopButton.disabled = true;
+
+        $('stop-label').textContent = 'SORTEANDO...';
+
+        $('game-status').textContent =
+            `${player.nickname}, aguardando o sorteio da letra...`;
+
+        $('selected-letter-box').hidden = true;
+
+        $('selected-letter').textContent = '—';
+
+        updateLetters();
+
+        const available = [...alphabet].filter(letter => !usedLetters.has(letter));
+
+        if (available.length === 0) {
+
+            checkRoundEnd();
+
+            return;
+
+        }
+
+        let letter;
+
+        try {
+
+            letter = await ms.sortearLetra(available);
+
+        } catch (error) {
+
+            console.error('[STOP!] Erro no sorteio automático:', error);
+
+        }
+
+        // Impede que uma animação antiga altere outra tentativa.
+
+        if (!inTiebreak() || !roundStarted || roundFinished || matchFinished ||
+            ms.obterTentativa() !== attempt || currentCard !== card ||
+            getCurrentPlayer() !== player || player.eliminated) return;
+
+        // Se a animação falhar, sorteia sem efeito visual.
+
+        if (!available.includes(letter) || usedLetters.has(letter)) {
+
+            const remaining = available.filter(item => !usedLetters.has(item));
+
+            if (!remaining.length) {
+
+                checkRoundEnd();
+
+                return;
+
+            }
+
+            letter = remaining[Math.floor(Math.random() * remaining.length)];
+
+        }
+
+        // Consome a letra sorteada sem liberar seleção manual.
+
+        selectedLetter = letter;
+
+        usedLetters.add(letter);
+
+        $('selected-letter-box').hidden = false;
+
+        $('selected-letter').textContent = letter;
+
+        updateLetters();
+
+        stopButton.disabled = false;
+
+        $('stop-label').textContent = 'CONFIRMAR';
+
+        $('game-status').textContent = config.mode === 'sem-call'
+            ? `Letra ${letter} sorteada! Digite sua resposta.`
+            : `Letra ${letter} sorteada! Fale a resposta e pressione STOP!`;
+
+        // Inicia o cronômetro somente após revelar a letra.
+
+        startTimer();
+
+        if (config.mode === 'sem-call') {
+
+            enableAnswerInput();
+
+        } else {
+
+            stopButton.focus({ preventScroll: true });
+
+        }
+
+    }
 
     function handleStop() {
 
@@ -3239,13 +3527,23 @@
                 'REINICIAR';
 
             $('game-status').textContent =
-                `${getCurrentPlayer().nickname}, escolha uma letra livre.`;
+                inTiebreak()
+                    ? `${getCurrentPlayer().nickname}, aguarde o sorteio.`
+                    : `${getCurrentPlayer().nickname}, escolha uma letra livre.`;
 
             updateTurnIndicator();
 
             updateLetters();
 
-            startTimer();
+            if (inTiebreak()) {
+
+                startAutomaticTiebreakTurn();
+
+            } else {
+
+                startTimer();
+
+            }
 
             return;
 
@@ -3342,10 +3640,10 @@
 
         finishGameButton.hidden = false;
 
-        finishGameButton.disabled = true;
+        finishGameButton.disabled = !ms;
 
         finishGameButton.textContent =
-            'DESEMPATE NECESSÁRIO';
+            'INICIAR MORTE SÚBITA →';
 
         turnIndicator.textContent =
             'MORTE SÚBITA';
@@ -3371,7 +3669,13 @@
         }
 
         // Não declara um campeão arbitrariamente.
-        // O desempate será implementado na próxima etapa.
+        // O botão acima abre o desempate decisivo.
+
+        if (!finishGameButton.disabled) {
+
+            finishGameButton.focus();
+
+        }
 
     }
 
@@ -3391,7 +3695,7 @@
 
         if (pendingRoundTiebreak.length > 0) return;
 
-        if (pendingMatchTiebreak.length > 0) return;
+        if (inTiebreak()) return;
 
         if (matchDeck.length > 0) return;
 
@@ -3408,11 +3712,27 @@
 
         }
 
+        if (pendingMatchTiebreak.length > 0 && !finalChampion) {
+
+            const tiedPlayers = players.filter(player => {
+
+                return pendingMatchTiebreak.includes(player.id);
+
+            });
+
+            beginTiebreak('final', tiedPlayers);
+
+            return;
+
+        }
+
         // ====================================
         // CLASSIFICAÇÃO FINAL
         // ====================================
 
-        const finalists = getMatchFinalists();
+        const finalists = finalChampion
+            ? [finalChampion]
+            : getMatchFinalists();
 
         // Caso exista empate absoluto,
         // será necessário realizar uma morte súbita.
@@ -3437,6 +3757,21 @@
         const champion = finalists[0];
 
         const ranking = getMatchRanking();
+
+        // Preserva os critérios normais e coloca o campeão
+        // da morte súbita à frente dos demais empatados.
+
+        if (finalChampion) {
+
+            ranking.sort((a, b) => {
+
+                return b.score - a.score ||
+                    b.totalHits - a.totalHits ||
+                    Number(b.id === champion.id) - Number(a.id === champion.id);
+
+            });
+
+        }
 
         // ====================================
         // DADOS DO RESULTADO FINAL
@@ -3481,6 +3816,10 @@
             })),
 
             rounds: roundHistory,
+
+            tiebreaks: tiebreakHistory,
+
+            decidedByTiebreak: Boolean(finalChampion),
 
             modoTeste: modoTeste
 
@@ -3569,6 +3908,427 @@
     }
 
     // ========================================
+    // INTEGRAÇÃO DA MORTE SÚBITA
+    // ========================================
+
+    function setTiebreakLabels(active) {
+
+        $('ms-status-badge').hidden = !active;
+
+        $('game-eyebrow').textContent = active
+            ? 'DESEMPATE DECISIVO' : '02 / PARTIDA';
+
+        $('game-title').textContent = active
+            ? 'Tudo ou nada!' : 'Uma letra. Mil respostas!';
+
+        $('game-description').textContent = active
+            ? 'Uma letra pode decidir tudo.' : 'Pense na resposta e escolha uma letra livre.';
+
+        $('theme-section-title').textContent = active
+            ? 'TEMA EXTRA' : 'TEMA DA RODADA';
+
+        $('players-heading-title').textContent = active
+            ? 'FINALISTAS' : 'NA MESA';
+
+        $('players-score-label').textContent = active
+            ? 'ACERTOS NO DESEMPATE' : 'PONTOS EM CARTAS';
+
+        $('draw-title').textContent = active
+            ? 'Qual será o tema decisivo?' : 'Qual vai ser o desafio?';
+
+        $('draw-description').textContent = active
+            ? 'Um tema extra. Uma última disputa.' : 'Uma carta. Um tema. Mil possibilidades.';
+
+        $('draw-card-caption').textContent = active
+            ? 'TEMA EXTRA' : 'TEMA DA RODADA';
+
+        $('game-footer-message').textContent = active
+            ? 'APENAS UM SAIRÁ VENCEDOR.' : 'PENSE RÁPIDO. JOGUE JUNTO. DÊ STOP!';
+
+    }
+
+    // Interrompe a partida enquanto a introdução estiver visível.
+
+    function pauseForTiebreak() {
+
+        if (ms) ms.cancelarSorteioLetra();
+
+        stopTimer();
+
+        clearTimeout(backgroundCaptureTimer);
+
+        roundStarted = false;
+
+        roundFinished = true;
+
+        selectedLetter = null;
+
+        $('selected-letter-box').hidden = true;
+
+        $('selected-letter').textContent = '—';
+
+        stopButton.disabled = true;
+
+        nextRoundButton.disabled = true;
+
+        finishGameButton.disabled = true;
+
+        resetAnswerInput();
+
+        updateLetters();
+
+        gameScreen.setAttribute('inert', '');
+
+        drawOverlay.hidden = true;
+
+        roundEndOverlay.hidden = true;
+
+        roundConfetti.replaceChildren();
+
+        turnIndicator.textContent = 'MORTE SÚBITA';
+
+    }
+
+    // Preserva a rodada original antes de utilizar o tema extra.
+
+    function beginTiebreak(type, finalists) {
+
+        if (!ms || !ms.iniciar(type, finalists)) {
+
+            roundWinnerNext.textContent =
+                'Não foi possível iniciar o desempate. Verifique morte-subita.js.';
+
+            return false;
+
+        }
+
+        originalRound = {
+
+            card: currentCard,
+
+            letters: [...usedLetters],
+
+            winner: roundWinner,
+
+            playerIndex: currentPlayerIndex,
+
+            players: players.map(player => ({
+
+                id: player.id,
+
+                eliminated: player.eliminated,
+
+                spectator: player.spectator,
+
+                eliminationReason: player.eliminationReason
+
+            }))
+
+        };
+
+        pauseForTiebreak();
+
+        if (!ms.mostrarIntroducao(players)) {
+
+            ms.resetar();
+
+            originalRound = null;
+
+            roundEndOverlay.hidden = false;
+
+            if (type === 'rodada') {
+
+                nextRoundButton.disabled = false;
+
+            } else {
+
+                finishGameButton.disabled = false;
+
+            }
+
+            roundWinnerNext.textContent = 'Verifique a introdução no jogo.html.';
+
+            return false;
+
+        }
+
+        return true;
+
+    }
+
+    // Prepara a tentativa usando a roleta e o cronômetro originais.
+
+    async function prepareTiebreak() {
+
+        if (!inTiebreak() || isPreparingNextRound || matchFinished) return;
+
+        if (msStartButton.disabled) return;
+
+        msStartButton.disabled = true;
+
+        isPreparingNextRound = true;
+
+        roundFinished = false;
+
+        roundStarted = false;
+
+        roundWinner = null;
+
+        currentCard = null;
+
+        isShuffling = false;
+
+        const finalists = ms.obterParticipantes();
+
+        // Mantém a ordem circular da mesa, começando pelo
+        // próximo finalista disponível.
+
+        for (let offset = 1; offset <= players.length; offset++) {
+
+            const index = (currentPlayerIndex + offset) % players.length;
+
+            if (finalists.includes(players[index].id)) {
+
+                currentPlayerIndex = index;
+
+                break;
+
+            }
+
+        }
+
+        players.forEach(player => {
+
+            player.eliminated = !ms.jogadorParticipa(player.id);
+
+            player.spectator = player.eliminated;
+
+            player.eliminationReason = player.eliminated ? 'not-finalist' : null;
+
+        });
+
+        usedAnswers.clear();
+
+        lastConfirmedAnswer = null;
+
+        resetWheel();
+
+        resetTimer();
+
+        resetAnswerInput();
+
+        stopButton.disabled = true;
+
+        $('stop-label').textContent = 'AGUARDE';
+
+        $('current-theme').textContent = 'Aguardando tema extra...';
+
+        $('game-status').textContent =
+            `${getCurrentPlayer().nickname} realizará o sorteio decisivo.`;
+
+        setTiebreakLabels(true);
+
+        ms.ativarEfeitos();
+
+        updateRound();
+
+        renderPlayers();
+
+        resetDrawInterface();
+
+        try {
+
+            if (backgroundCapturePromise) {
+
+                await backgroundCapturePromise;
+
+            }
+
+            await requestBackgroundCapture();
+
+        } finally {
+
+            ms.esconderIntroducao();
+
+            drawOverlay.hidden = false;
+
+            drawButton.disabled = false;
+
+            isPreparingNextRound = false;
+
+            drawButton.focus();
+
+        }
+
+    }
+
+    // Repete a disputa quando os finalistas permanecem empatados.
+
+    function repeatTiebreak(finalists) {
+
+        if (!ms.repetir(finalists)) return false;
+
+        pauseForTiebreak();
+
+        ms.desativarEfeitos();
+
+        ms.mostrarIntroducao(players);
+
+        return true;
+
+    }
+
+    function checkTiebreakEnd() {
+
+        const result = ms.verificarResultado(
+            players,
+            usedLetters.size,
+            alphabet.length
+        );
+
+        if (result.status === 'vencedor') {
+
+            completeTiebreak(result.jogador, result.motivo);
+
+            return true;
+
+        }
+
+        if (result.status === 'novo-empate') {
+
+            return repeatTiebreak(result.jogadores);
+
+        }
+
+        if (result.status === 'sem-vencedor') {
+
+            return repeatTiebreak(players.filter(player => {
+
+                return ms.jogadorParticipa(player.id);
+
+            }));
+
+        }
+
+        return false;
+
+    }
+
+    // Restaura a partida original após definir o vencedor.
+
+    function completeTiebreak(winner, reason) {
+
+        const result = ms.finalizar(winner);
+
+        if (!result) return;
+
+        tiebreakHistory.push({ ...result, round, reason });
+
+        pauseForTiebreak();
+
+        currentCard = originalRound.card;
+
+        usedLetters.clear();
+
+        originalRound.letters.forEach(letter => usedLetters.add(letter));
+
+        players.forEach(player => {
+
+            const saved = originalRound.players.find(item => item.id === player.id);
+
+            player.eliminated = saved.eliminated;
+
+            player.spectator = saved.spectator;
+
+            player.eliminationReason = saved.eliminationReason;
+
+        });
+
+        roundWinner = originalRound.winner;
+
+        currentPlayerIndex = originalRound.playerIndex;
+
+        originalRound = null;
+
+        pendingRoundTiebreak = [];
+
+        pendingMatchTiebreak = [];
+
+        usedAnswers.clear();
+
+        lastConfirmedAnswer = null;
+
+        setTiebreakLabels(false);
+
+        ms.resetar();
+
+        updateRound();
+
+        updateRemainingCards();
+
+        $('current-theme').textContent = currentCard?.tema || '—';
+
+        resetTimer();
+
+        updateLetters();
+
+        renderPlayers();
+
+        if (result.tipo === 'rodada') {
+
+            // A carta e o histórico pertencem à rodada original.
+
+            roundFinished = false;
+
+            finishRound(winner, `Vitória na morte súbita! ${reason}`);
+
+        } else {
+
+            // Nenhuma carta ou acerto normal adicional é concedido.
+
+            finalChampion = winner;
+
+            roundFinished = true;
+
+            resetRoundWinnerInterface();
+
+            roundWinnerNumber.textContent = 'DESEMPATE FINAL';
+
+            roundEndTitle.textContent = 'CAMPEÃO DEFINIDO!';
+
+            roundEndReason.textContent = 'Vitória na morte súbita final!';
+
+            roundEndPlayer.textContent = winner.nickname;
+
+            roundWinnerAvatar.textContent = getPlayerAvatar(winner);
+
+            roundWinnerReward.hidden = true;
+
+            roundWinnerStats.hidden = true;
+
+            roundWinnerThemeBox.hidden = true;
+
+            roundEndOverlay.hidden = false;
+
+            finishGameButton.hidden = false;
+
+            finishGameButton.disabled = false;
+
+            finishGameButton.textContent = 'VER RESULTADO FINAL →';
+
+            finishMatch();
+
+        }
+
+    }
+
+    if (msStartButton) {
+
+        msStartButton.addEventListener('click', prepareTiebreak);
+
+    }
+
+    // ========================================
     // EVENTOS
     // ========================================
 
@@ -3621,6 +4381,12 @@
         stopTimer();
 
         clearTimeout(backgroundCaptureTimer);
+
+        if (ms) {
+
+            ms.resetar();
+
+        }
 
         if (modoTeste) {
 

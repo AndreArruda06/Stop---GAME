@@ -1,0 +1,824 @@
+/* ========================================
+   STOP! — MORTE SÚBITA
+======================================== */
+
+/*
+    Os efeitos são ativados exclusivamente
+    quando o body recebe a classe:
+
+    morte-subita-ativa
+
+    A partida normal não sofre alterações.
+*/
+
+/* ========================================
+   IDENTIDADE VISUAL
+======================================== */
+
+body.morte-subita-ativa {
+    --ms-red: #ef3838;
+    --ms-red-dark: #b9272d;
+    --ms-cream: #fff7df;
+    --ms-yellow: #ffd83d;
+    --ms-blue: #1768b5;
+}
+
+/* ========================================
+   VINHETA VERMELHA
+======================================== */
+
+body.morte-subita-ativa::before {
+    content: "";
+
+    position: fixed;
+    inset: 0;
+
+    z-index: 105;
+
+    pointer-events: none;
+
+    background: radial-gradient(
+        ellipse at center,
+        transparent 48%,
+        rgba(239, 56, 56, .08) 65%,
+        rgba(185, 39, 45, .35) 85%,
+        rgba(185, 39, 45, .65) 100%
+    );
+
+    opacity: .65;
+
+    animation:
+        ms-vignette-pulse 2.8s ease-in-out infinite;
+}
+
+/* Pulsação lenta, simulando tensão. */
+
+@keyframes ms-vignette-pulse {
+
+    0%,
+    100% {
+        opacity: .45;
+    }
+
+    50% {
+        opacity: .85;
+    }
+}
+
+/* ========================================
+   VINHETA NOS ÚLTIMOS SEGUNDOS
+======================================== */
+
+/*
+    Intensifica o efeito quando faltarem
+    três segundos para o jogador responder.
+*/
+
+body.morte-subita-ativa.morte-subita-critica::before {
+
+    animation:
+        ms-vignette-critical 1.4s ease-in-out infinite;
+}
+
+@keyframes ms-vignette-critical {
+
+    0%,
+    100% {
+        opacity: .65;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+/* ========================================
+   TREMOR LEVE DA TELA
+======================================== */
+
+/*
+    O tremor é aplicado somente ao iniciar
+    o desempate ou em momentos específicos.
+
+    Não permanece ativo continuamente.
+*/
+
+body.morte-subita-ativa.morte-subita-impacto
+.game-screen {
+
+    animation:
+        ms-screen-shake .65s ease-out both;
+}
+
+@keyframes ms-screen-shake {
+
+    0% {
+        transform: translate(0, 0);
+    }
+
+    10% {
+        transform: translate(-3px, 1px);
+    }
+
+    20% {
+        transform: translate(3px, -1px);
+    }
+
+    30% {
+        transform: translate(-2px, 1px);
+    }
+
+    40% {
+        transform: translate(2px, -1px);
+    }
+
+    50% {
+        transform: translate(-1px, 0);
+    }
+
+    60% {
+        transform: translate(1px, 0);
+    }
+
+    75%,
+    100% {
+        transform: translate(0, 0);
+    }
+}
+
+/* ========================================
+   CABEÇALHO DA PARTIDA
+======================================== */
+
+body.morte-subita-ativa .topbar {
+
+    border-bottom-color:
+        rgba(185, 39, 45, .25);
+}
+
+body.morte-subita-ativa .game-intro h1 {
+
+    color: var(--ms-red-dark);
+}
+
+body.morte-subita-ativa .game-intro .eyebrow {
+
+    color: var(--ms-red-dark);
+}
+
+/* Identificação da rodada especial. */
+
+body.morte-subita-ativa .round-number {
+
+    background: var(--ms-red-dark);
+
+    color: var(--ms-cream);
+
+    box-shadow:
+        0 3px 0 #8f2025;
+}
+
+/* ========================================
+   CRONÔMETRO
+======================================== */
+
+body.morte-subita-ativa .timer-card {
+
+    background: var(--ms-red-dark);
+
+    color: var(--ms-cream);
+
+    box-shadow:
+        0 4px 0 #8f2025;
+}
+
+/* Últimos cinco segundos. */
+
+body.morte-subita-ativa .timer-card.warning {
+
+    background: var(--ms-yellow);
+
+    color: var(--blue-deep);
+
+    box-shadow:
+        0 4px 0 var(--yellow-shadow);
+}
+
+/* Últimos três segundos. */
+
+body.morte-subita-ativa .timer-card.danger {
+
+    background: var(--ms-red);
+
+    color: var(--ms-cream);
+
+    box-shadow:
+        0 4px 0 var(--ms-red-dark);
+}
+
+/* ========================================
+   ROLETA
+======================================== */
+
+/*
+    Mantém as dimensões, as letras
+    e o funcionamento original da roleta.
+*/
+
+body.morte-subita-ativa .wheel-body {
+
+    background: radial-gradient(
+        circle at 40% 30%,
+        #ff5555 0%,
+        #e32d35 55%,
+        #b9272d 100%
+    );
+
+    box-shadow:
+        0 8px 0 #8f2025,
+        0 15px 25px rgba(185, 39, 45, .22),
+        inset 0 4px 0 rgba(255, 255, 255, .22);
+}
+
+/* ========================================
+   TEMA EXTRA
+======================================== */
+
+body.morte-subita-ativa .current-card {
+
+    background: var(--ms-red-dark);
+
+    border-color: #ff6868;
+
+    box-shadow:
+        0 4px 0 #8f2025;
+}
+
+/* ========================================
+   JOGADORES FINALISTAS
+======================================== */
+
+body.morte-subita-ativa
+.player-item.active {
+
+    border-color: var(--ms-red);
+
+    box-shadow:
+        0 0 0 2px rgba(239, 56, 56, .15);
+}
+
+body.morte-subita-ativa
+.player-item.eliminated {
+
+    opacity: .3;
+}
+
+/* ========================================
+   SORTEIO DA MORTE SÚBITA
+======================================== */
+
+body.morte-subita-ativa
+.draw-background::after {
+
+    background:
+        rgba(65, 8, 15, .65);
+}
+
+body.morte-subita-ativa .draw-round {
+
+    color: var(--ms-yellow);
+
+    letter-spacing: 2px;
+}
+
+body.morte-subita-ativa .deck::before {
+
+    background: radial-gradient(
+        ellipse at center,
+        rgba(255, 65, 65, .45) 0%,
+        rgba(239, 56, 56, .25) 35%,
+        rgba(185, 39, 45, .1) 60%,
+        transparent 80%
+    );
+}
+
+/* ========================================
+   TELA DRAMÁTICA DE INTRODUÇÃO
+======================================== */
+
+.morte-subita-intro {
+
+    position: fixed;
+    inset: 0;
+
+    z-index: 150;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 25px;
+
+    overflow-y: auto;
+
+    background: #68151d;
+
+    color: #fff7df;
+
+    text-align: center;
+
+    animation:
+        ms-intro-entry .4s ease-out both;
+}
+
+/* Vinheta da introdução. */
+
+.morte-subita-intro::before {
+
+    content: "";
+
+    position: absolute;
+    inset: 0;
+
+    pointer-events: none;
+
+    background: radial-gradient(
+        ellipse at center,
+        rgba(239, 56, 56, .25) 0%,
+        transparent 45%,
+        rgba(35, 0, 5, .45) 100%
+    );
+}
+
+/* Conteúdo central. */
+
+.ms-intro-content {
+
+    position: relative;
+
+    z-index: 1;
+
+    width: 100%;
+    max-width: 650px;
+
+    margin: auto;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* ========================================
+   TEXTO DE INTRODUÇÃO
+======================================== */
+
+.ms-intro-eyebrow {
+
+    color: #ffd83d;
+
+    font-size: 12px;
+    font-weight: 900;
+
+    letter-spacing: 3px;
+}
+
+.ms-intro-icon {
+
+    margin: 20px 0 5px;
+
+    font-size: 65px;
+
+    line-height: 1.1;
+
+    animation:
+        ms-icon-impact .55s ease-out both;
+}
+
+.ms-intro-title {
+
+    margin: 15px 0;
+
+    font-family: 'Fredoka', sans-serif;
+
+    font-size: clamp(42px, 7vw, 85px);
+
+    font-weight: 700;
+
+    line-height: 1;
+
+    color: #fff7df;
+
+    text-shadow:
+        0 5px 0 #380b10;
+
+    animation:
+        ms-title-impact .5s ease-out both;
+}
+
+.ms-intro-subtitle {
+
+    margin: 5px 0;
+
+    color: #ffd83d;
+
+    font-family: 'Fredoka', sans-serif;
+
+    font-size: clamp(22px, 4vw, 30px);
+
+    font-weight: 600;
+}
+
+.ms-intro-description {
+
+    max-width: 450px;
+
+    margin: 12px 0;
+
+    color: #f5c9cb;
+
+    font-size: 14px;
+
+    font-weight: 700;
+
+    line-height: 1.6;
+}
+
+/* ========================================
+   FINALISTAS DA MORTE SÚBITA
+======================================== */
+
+.ms-finalists {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+
+    gap: 12px;
+
+    width: 100%;
+
+    margin-top: 20px;
+
+    max-height: 200px;
+
+    overflow-y: auto;
+}
+
+.ms-finalist {
+
+    width: 90px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    gap: 8px;
+
+    padding: 14px 8px;
+
+    background: #8f2025;
+
+    border: 1px solid #b84b51;
+
+    border-radius: 14px;
+}
+
+.ms-finalist-avatar {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 50px;
+    height: 50px;
+
+    background: #fff7df;
+
+    color: #b9272d;
+
+    border: 3px solid #ffd83d;
+    border-radius: 50%;
+
+    font-family: 'Fredoka', sans-serif;
+
+    font-size: 26px;
+
+    font-weight: 700;
+}
+
+.ms-finalist-name {
+
+    max-width: 100%;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    color: #fff7df;
+
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.ms-finalist-label {
+
+    color: #ffd83d;
+
+    font-size: 8px;
+    font-weight: 900;
+}
+
+/* ========================================
+   BOTÃO DO DESEMPATE
+======================================== */
+
+.ms-start-button {
+
+    width: 100%;
+    max-width: 290px;
+
+    min-height: 52px;
+
+    margin-top: 28px;
+    padding: 14px 20px;
+
+    background: #ffd83d;
+
+    color: #68151d;
+
+    border: none;
+    border-radius: 14px;
+
+    font-size: 14px;
+    font-weight: 900;
+
+    box-shadow:
+        0 4px 0 #bf901c;
+
+    transition:
+        background .15s ease,
+        transform .15s ease,
+        box-shadow .15s ease;
+}
+
+.ms-start-button:hover:not(:disabled) {
+
+    background: #ffe66b;
+
+    transform: translateY(-2px);
+}
+
+.ms-start-button:active:not(:disabled) {
+
+    transform: translateY(3px);
+
+    box-shadow:
+        0 1px 0 #bf901c;
+}
+
+.ms-start-button:disabled {
+
+    opacity: .55;
+}
+
+/* ========================================
+   MENSAGEM FINAL DA INTRODUÇÃO
+======================================== */
+
+.ms-intro-footer {
+
+    margin-top: 18px;
+
+    color: #f5c9cb;
+
+    font-size: 11px;
+
+    font-weight: 800;
+
+    letter-spacing: .6px;
+}
+
+/* ========================================
+   ANIMAÇÕES DE INTRODUÇÃO
+======================================== */
+
+@keyframes ms-intro-entry {
+
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes ms-title-impact {
+
+    0% {
+        opacity: 0;
+
+        transform:
+            scale(1.15)
+            translateY(-10px);
+    }
+
+    65% {
+        opacity: 1;
+
+        transform:
+            scale(.98)
+            translateY(0);
+    }
+
+    100% {
+        opacity: 1;
+
+        transform: scale(1);
+    }
+}
+
+@keyframes ms-icon-impact {
+
+    from {
+        opacity: 0;
+
+        transform:
+            translateY(-12px)
+            scale(.85);
+    }
+
+    to {
+        opacity: 1;
+
+        transform:
+            translateY(0)
+            scale(1);
+    }
+}
+
+/* ========================================
+   IDENTIFICAÇÃO DO MODO ESPECIAL
+======================================== */
+
+.ms-status-badge {
+
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 7px;
+
+    padding: 8px 14px;
+
+    background: #b9272d;
+
+    color: #fff7df;
+
+    border-radius: 20px;
+
+    font-size: 10px;
+    font-weight: 900;
+
+    white-space: nowrap;
+}
+
+.ms-status-dot {
+
+    width: 7px;
+    height: 7px;
+
+    background: #ffd83d;
+
+    border-radius: 50%;
+}
+
+/* ========================================
+   RESPONSIVIDADE
+======================================== */
+
+@media (max-width: 760px) {
+
+    .morte-subita-intro {
+
+        padding: 20px 15px;
+    }
+
+    .ms-intro-title {
+
+        font-size: clamp(35px, 9vw, 60px);
+    }
+
+    .ms-intro-eyebrow {
+
+        font-size: 10px;
+
+        letter-spacing: 2px;
+    }
+
+    .ms-intro-icon {
+
+        font-size: 55px;
+    }
+
+    .ms-intro-description {
+
+        font-size: 12px;
+    }
+
+    .ms-finalists {
+
+        gap: 8px;
+    }
+
+    .ms-finalist {
+
+        width: 75px;
+
+        padding: 10px 6px;
+    }
+
+    .ms-finalist-avatar {
+
+        width: 42px;
+        height: 42px;
+
+        font-size: 22px;
+    }
+
+    .ms-status-badge {
+
+        padding: 7px 10px;
+
+        font-size: 8px;
+    }
+}
+
+@media (max-height: 700px) {
+
+    .ms-intro-icon {
+
+        margin: 10px 0 0;
+
+        font-size: 48px;
+    }
+
+    .ms-intro-title {
+
+        font-size: clamp(36px, 6vw, 65px);
+
+        margin: 10px 0;
+    }
+
+    .ms-finalists {
+
+        margin-top: 12px;
+    }
+
+    .ms-start-button {
+
+        margin-top: 18px;
+    }
+}
+
+/* ========================================
+   ACESSIBILIDADE E DESEMPENHO
+======================================== */
+
+/*
+    Desativa tremores e pulsações quando
+    o usuário prefere movimento reduzido.
+
+    Mantém apenas a vinheta estática.
+*/
+
+@media (prefers-reduced-motion: reduce) {
+
+    body.morte-subita-ativa::before,
+
+    body.morte-subita-ativa.morte-subita-critica::before,
+
+    body.morte-subita-ativa.morte-subita-impacto
+    .game-screen,
+
+    .morte-subita-intro,
+
+    .ms-intro-title,
+
+    .ms-intro-icon {
+
+        animation: none !important;
+    }
+
+    body.morte-subita-ativa::before {
+
+        opacity: .55;
+    }
+
+    .ms-start-button {
+
+        transition: none !important;
+    }
+}

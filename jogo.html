@@ -8,7 +8,11 @@
 
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap">
 
+    <!-- Estilização principal -->
     <link rel="stylesheet" href="css/jogo.css">
+
+    <!-- Estilização exclusiva da morte súbita -->
+    <link rel="stylesheet" href="css/morte-subita.css">
 
     <!-- Biblioteca para captura da tela -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -50,6 +54,19 @@
                     MODO DE JOGO
                 </span>
 
+                <!-- Identificação exclusiva da morte súbita -->
+                <span id="ms-status-badge"
+                    class="ms-status-badge"
+                    hidden>
+
+                    <span class="ms-status-dot"
+                        aria-hidden="true">
+                    </span>
+
+                    MORTE SÚBITA
+
+                </span>
+
             </div>
 
         </header>
@@ -62,13 +79,18 @@
 
                 <div>
 
-                    <span class="eyebrow">
+                    <span id="game-eyebrow"
+                        class="eyebrow">
+
                         02 / PARTIDA
+
                     </span>
 
-                    <h1>Uma letra. Mil respostas!</h1>
+                    <h1 id="game-title">
+                        Uma letra. Mil respostas!
+                    </h1>
 
-                    <p>
+                    <p id="game-description">
                         Pense na resposta e escolha uma letra livre.
                     </p>
 
@@ -180,7 +202,9 @@
                     <!-- Tema da rodada -->
                     <section class="theme-section">
 
-                        <h2>TEMA DA RODADA</h2>
+                        <h2 id="theme-section-title">
+                            TEMA DA RODADA
+                        </h2>
 
                         <div id="current-card"
                             class="current-card">
@@ -300,9 +324,13 @@
 
                         <div class="players-heading">
 
-                            <h2>NA MESA</h2>
+                            <h2 id="players-heading-title">
+                                NA MESA
+                            </h2>
 
-                            <span>PONTOS EM CARTAS</span>
+                            <span id="players-score-label">
+                                PONTOS EM CARTAS
+                            </span>
 
                         </div>
 
@@ -363,7 +391,7 @@
         <!-- Rodapé -->
         <footer class="game-footer">
 
-            <span>
+            <span id="game-footer-message">
                 PENSE RÁPIDO. JOGUE JUNTO. DÊ STOP!
             </span>
 
@@ -382,7 +410,7 @@
         aria-modal="true"
         aria-labelledby="draw-title">
 
-        <!-- NOVO: fundo capturado da partida -->
+        <!-- Fundo capturado da partida -->
         <div id="draw-background"
             class="draw-background"
             aria-hidden="true">
@@ -453,8 +481,11 @@
                         <!-- Frente da carta -->
                         <div class="card-face card-front">
 
-                            <span class="card-caption">
+                            <span id="draw-card-caption"
+                                class="card-caption">
+
                                 TEMA DA RODADA
+
                             </span>
 
                             <h3 id="drawn-theme">
@@ -510,6 +541,94 @@
                 role="status">
 
                 O tema é surpresa. A diversão, não.
+
+            </p>
+
+        </div>
+
+    </section>
+
+    <!-- ===================================== -->
+    <!-- INTRODUÇÃO DA MORTE SÚBITA             -->
+    <!-- ===================================== -->
+
+    <section id="morte-subita-intro"
+        class="morte-subita-intro"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ms-intro-title"
+        aria-describedby="ms-intro-description"
+        hidden>
+
+        <div class="ms-intro-content">
+
+            <!-- Tipo de desempate -->
+            <span id="ms-intro-eyebrow"
+                class="ms-intro-eyebrow">
+
+                DESEMPATE DECISIVO
+
+            </span>
+
+            <!-- Ícone dramático -->
+            <div class="ms-intro-icon"
+                aria-hidden="true">
+
+                ⚡
+
+            </div>
+
+            <!-- Título principal -->
+            <h2 id="ms-intro-title"
+                class="ms-intro-title">
+
+                MORTE SÚBITA!
+
+            </h2>
+
+            <!-- Subtítulo -->
+            <h3 id="ms-intro-subtitle"
+                class="ms-intro-subtitle">
+
+                TUDO OU NADA!
+
+            </h3>
+
+            <!-- Explicação do desempate -->
+            <p id="ms-intro-description"
+                class="ms-intro-description">
+
+                Os jogadores empatados disputarão um tema extra.
+                Apenas um sairá vencedor.
+
+            </p>
+
+            <!-- Participantes da morte súbita -->
+            <div id="ms-finalists"
+                class="ms-finalists"
+                aria-label="Participantes do desempate">
+
+                <!--
+                    Os participantes serão inseridos
+                    automaticamente pelo morte-subita.js.
+                -->
+
+            </div>
+
+            <!-- Botão para iniciar o desempate -->
+            <button type="button"
+                id="ms-start-button"
+                class="ms-start-button"
+                disabled>
+
+                INICIAR DESEMPATE →
+
+            </button>
+
+            <!-- Mensagem complementar -->
+            <p class="ms-intro-footer">
+
+                UMA LETRA PODE DECIDIR TUDO.
 
             </p>
 
@@ -796,13 +915,20 @@
 
     </section>
 
+    <!-- ===================================== -->
+    <!-- ARQUIVOS JAVASCRIPT                   -->
+    <!-- ===================================== -->
+
     <!-- Banco de cartas -->
     <script src="js/cartas.js"></script>
 
-    <!-- Ambiente de Teste-->
+    <!-- Ambiente de teste -->
     <script src="js/teste.js"></script>
 
-    <!-- Lógica da partida -->
+    <!-- Módulo independente da morte súbita -->
+    <script src="js/morte-subita.js"></script>
+
+    <!-- Lógica principal da partida -->
     <script src="js/jogo.js"></script>
 
 </body>
