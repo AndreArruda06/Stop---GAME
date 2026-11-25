@@ -1,3 +1,4 @@
+import { criarSalaOnline } from './salas-online.js';
 
 const form = document.getElementById('room-form');
 const nickname = document.getElementById('nickname');
@@ -6,6 +7,10 @@ const createButton = document.getElementById('create-button');
 const formNote = document.getElementById('form-note');
 const formStatus = document.getElementById('form-status');
 const modeTag = document.getElementById('mode-tag');
+
+// Controle da criação online
+
+let criandoSala = false;
 
 // Configurações iniciais e limites
 
@@ -67,6 +72,7 @@ function updateSettings() {
             const step = Number(button.dataset.step);
 
             button.disabled =
+                criandoSala ||
                 config.value + step < config.min ||
                 config.value + step > config.max;
         });
@@ -78,6 +84,8 @@ function updateSettings() {
 document.querySelectorAll('.stepper button').forEach(button => {
 
     button.addEventListener('click', () => {
+
+        if (criandoSala) return;
 
         const target = button.dataset.target;
         const step = Number(button.dataset.step);
@@ -141,6 +149,18 @@ function validateField(input) {
         return false;
     }
 
+    const limite = input === nickname ? 20 : 30;
+
+    if (value.length > limite) {
+
+        showError(
+            input,
+            `Utilize até ${limite} caracteres.`
+        );
+
+        return false;
+    }
+
     clearError(input);
 
     return true;
@@ -155,12 +175,19 @@ function updateForm() {
 
     const valid =
         nickname.value.trim() !== '' &&
+        nickname.value.trim().length <= 20 &&
         roomName.value.trim() !== '' &&
+        roomName.value.trim().length <= 30 &&
         validMode;
 
-    createButton.disabled = !valid;
+    createButton.disabled = !valid || criandoSala;
 
-    if (!validMode) {
+    if (criandoSala) {
+
+        formNote.textContent =
+            'Aguarde enquanto sua sala é criada.';
+
+    } else if (!validMode) {
 
         formNote.textContent =
             'Volte e selecione uma modalidade.';
@@ -198,11 +225,35 @@ function updateForm() {
     });
 });
 
+// Bloqueio temporário durante a criação
+
+function controlarCriacao(ativa) {
+
+    criandoSala = ativa;
+
+    nickname.disabled = ativa;
+
+    roomName.disabled = ativa;
+
+    form.setAttribute(
+        'aria-busy',
+        String(ativa)
+    );
+
+    updateSettings();
+
+    updateForm();
+}
+
 // Envio do formulário
 
-form.addEventListener('submit', event => {
+form.addEventListener('submit', async event => {
 
     event.preventDefault();
+
+    // Impede a criação duplicada de salas.
+
+    if (criandoSala) return;
 
     const validNickname = validateField(nickname);
     const validRoomName = validateField(roomName);
@@ -221,16 +272,69 @@ form.addEventListener('submit', event => {
         mode: mode,
         players: settings.players.value,
         time: settings.time.value,
-        cards: settings.cards.value
+        cards: settings.cards.value,
+        privacy: 'privada'
     };
 
-    sessionStorage.setItem(
-        'roomConfig',
-        JSON.stringify(roomConfig)
-    );
+    const textoOriginal = createButton.textContent;
 
-    // Redireciona o anfitrião para o Lobby
-    window.location.href = 'lobby.html';
+    controlarCriacao(true);
+
+    createButton.textContent = 'CRIANDO SALA...';
+
+    formStatus.textContent =
+        'Conectando ao servidor...';
+
+    try {
+
+        // Cria a sala no Firebase.
+
+        const salaOnline = await criarSalaOnline(
+            roomConfig
+        );
+
+        // Acrescenta os dados reais da sala.
+
+        const configuracaoCompleta = {
+            ...roomConfig,
+            ...salaOnline
+        };
+
+        // Armazena os dados necessários para o Lobby.
+
+        sessionStorage.setItem(
+            'roomConfig',
+            JSON.stringify(configuracaoCompleta)
+        );
+
+        formStatus.textContent =
+            'Sala criada com sucesso!';
+
+        console.info(
+            '[STOP!] Sala online criada:',
+            configuracaoCompleta
+        );
+
+        // Redireciona o anfitrião para o Lobby.
+
+        window.location.href = 'lobby.html';
+
+    } catch (erro) {
+
+        console.error(
+            '[STOP!] Erro ao criar sala:',
+            erro
+        );
+
+        formStatus.textContent =
+            'Não foi possível criar a sala. Tente novamente.';
+
+        createButton.textContent = textoOriginal;
+
+        controlarCriacao(false);
+
+    }
+
 });
 
 // Inicialização

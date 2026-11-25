@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Teste Firebase - STOP!</title>
+</head>
+
+<body>
+
+    <h1>Teste do banco de dados - STOP!</h1>
+
+    <p id="status">Iniciando testes...</p>
+
+    <div id="resultados"></div>
+
+    <script type="module">
+
+        import {
+            autenticarJogador,
+            database
+        } from "./js/firebase-config.js";
+
+        import {
+            ref,
+            set,
+            get,
+            remove,
+            serverTimestamp
+        } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-database.js";
+
+        const status = document.getElementById("status");
+        const resultados = document.getElementById("resultados");
+
+        function registrar(mensagem, sucesso = true) {
+
+            const linha = document.createElement("p");
+
+            linha.textContent = mensagem;
+
+            linha.style.color = sucesso ? "green" : "red";
+
+            resultados.appendChild(linha);
+
+            console.log(mensagem);
+
+        }
+
+        try {
+
+            // TESTE 1 - Autenticação
+
+            const jogador = await autenticarJogador();
+
+            registrar("OK - Jogador autenticado.");
+
+            // TESTE 2 - Gravação
+
+            const referencia = ref(
+                database,
+                `testes/${jogador.uid}`
+            );
+
+            await set(referencia, {
+                nickname: "Desenvolvedor",
+                mensagem: "STOP Online funcionando!",
+                criadoEm: serverTimestamp()
+            });
+
+            registrar("OK - Dados gravados no Firebase.");
+
+            // TESTE 3 - Leitura
+
+            const snapshot = await get(referencia);
+
+            if (
+                !snapshot.exists() ||
+                snapshot.val().mensagem !== "STOP Online funcionando!"
+            ) {
+
+                throw new Error("Dados incorretos.");
+
+            }
+
+            registrar("OK - Dados lidos corretamente.");
+
+            // TESTE 4 - Segurança
+
+            try {
+
+                await get(ref(database, "testes"));
+
+                throw new Error("Acesso indevido permitido.");
+
+            } catch (erro) {
+
+                if (!/permission.denied/i.test(erro.message + " " + erro.code)) {
+
+                    throw erro;
+
+                }
+
+                registrar("OK - Acesso não autorizado bloqueado.");
+
+            }
+
+            // TESTE 5 - Exclusão
+
+            await remove(referencia);
+
+            const verificacao = await get(referencia);
+
+            if (verificacao.exists()) {
+
+                throw new Error("Falha ao excluir dados.");
+
+            }
+
+            registrar("OK - Dados excluídos corretamente.");
+
+            status.textContent = "SUCESSO! Todos os testes passaram.";
+
+            status.style.color = "green";
+
+        } catch (erro) {
+
+            status.textContent = "FALHA NOS TESTES";
+
+            status.style.color = "red";
+
+            registrar(erro.message, false);
+
+            console.error(erro);
+
+        }
+
+    </script>
+
+</body>
+
+</html>

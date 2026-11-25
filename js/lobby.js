@@ -1,4 +1,3 @@
-
 // Elementos da sala
 const roomName = document.getElementById('room-name');
 const roomMode = document.getElementById('room-mode');
@@ -44,14 +43,120 @@ if (!roomConfig || !['com-call', 'sem-call'].includes(roomConfig.mode)) {
 
 } else {
 
-    initializeLobby();
+    if (guestTest) {
+        initializeLobby();
+    } else {
+        initializeOnlineLobby();
+    }
 
 }
 
-function initializeLobby() {
+// Conecta o lobby real sem carregar o Firebase no teste local.
+async function initializeOnlineLobby() {
+
+    const codigo = roomConfig.roomCode;
+
+    startButton.disabled = true;
+    readyButton.disabled = true;
+    copyCode.disabled = true;
+    leaveButton.disabled = true;
+    document.querySelectorAll('[data-target]').forEach(button => {
+        button.disabled = true;
+    });
+    lobbyStatus.textContent = 'Carregando sala online...';
+
+    try {
+        if (typeof codigo !== 'string' || !/^[A-Z0-9]{6}$/.test(codigo)) {
+            throw new Error('Código de sala inválido.');
+        }
+
+        const { database, autenticarJogador } = await import('./firebase-config.js');
+        const { ref, get, onValue, set } = await import(
+            'https://www.gstatic.com/firebasejs/13.4.0/firebase-database.js'
+        );
+        const usuario = await autenticarJogador();
+        const referencia = ref(database, `salas/${codigo}`);
+
+        const snapshot = await get(referencia);
+        const sala = snapshot.val();
+
+        if (!sala || !sala.jogadores?.[usuario.uid]) {
+            throw new Error('Sala indisponível para este jogador.');
+        }
+
+        const atualizarSala = initializeLobby({
+            uid: usuario.uid,
+            sala,
+            salvarConfiguracao: (campo, valor) => set(
+                ref(database, `salas/${codigo}/configuracoes/${campo}`),
+                valor
+            ),
+            salvarPronto: pronto => set(
+                ref(database, `salas/${codigo}/jogadores/${usuario.uid}/pronto`),
+                pronto
+            )
+        });
+        copyCode.disabled = false;
+        leaveButton.disabled = false;
+
+        const cancelar = onValue(referencia, snapshotAtual => {
+            const salaAtual = snapshotAtual.val();
+            if (!salaAtual || !salaAtual.jogadores?.[usuario.uid]) {
+                lobbyStatus.textContent = 'Seu acesso à sala foi encerrado.';
+                playersList.replaceChildren();
+                document.querySelectorAll('[data-target]').forEach(button => { button.disabled = true; });
+                startButton.disabled = true;
+                readyButton.disabled = true;
+                return;
+            }
+            atualizarSala(salaAtual);
+        }, erro => {
+            console.error('[STOP!] Falha na sincronização:', erro);
+            lobbyStatus.textContent = 'Não foi possível atualizar a sala.';
+            document.querySelectorAll('[data-target]').forEach(button => { button.disabled = true; });
+            startButton.disabled = true;
+            readyButton.disabled = true;
+        });
+
+        window.addEventListener('pagehide', cancelar, { once: true });
+
+    } catch (erro) {
+        console.error('[STOP!] Erro ao carregar sala:', erro);
+        lobbyStatus.textContent = 'Não foi possível carregar a sala online.';
+        leaveButton.disabled = false;
+        leaveButton.addEventListener('click', () => {
+            sessionStorage.removeItem('roomConfig');
+            window.location.href = `salas.html?modo=${encodeURIComponent(roomConfig.mode)}`;
+        }, { once: true });
+    }
+}
+
+function initializeLobby(online = null) {
+
+    const isOnline = online !== null;
+    let salvandoPronto = false;
+    let salvandoConfiguracao = false;
+    const camposOnline = { players: "maxJogadores", time: "tempo", cards: "quantidadeCartas" };
+    let statusSala = isOnline ? online.sala.status : 'aguardando';
+
+    function sincronizarConfig(sala) {
+        roomConfig.roomName = sala.nome;
+        roomConfig.mode = sala.modo;
+        roomConfig.privacy = sala.privacidade;
+        roomConfig.players = sala.configuracoes.maxJogadores;
+        roomConfig.time = sala.configuracoes.tempo;
+        roomConfig.cards = sala.configuracoes.quantidadeCartas;
+        roomConfig.playerId = online.uid;
+        roomConfig.hostId = sala.anfitriao;
+        roomConfig.isHost = sala.anfitriao === online.uid;
+        roomConfig.nickname = sala.jogadores[online.uid].nickname;
+        sessionStorage.setItem('roomConfig', JSON.stringify(roomConfig));
+    }
+
+    if (isOnline) sincronizarConfig(online.sala);
 
     // Identifica o papel do participante
-    const isHost = !guestTest;
+    let isHost = isOnline ? online.sala.anfitriao === online.uid : !guestTest;
 
     // Configurações e limites
     const settings = {
@@ -110,7 +215,7 @@ function initializeLobby() {
     }
 
     // Mantém o código ao atualizar a página
-    if (!roomConfig.roomCode) {
+    if (!isOnline && !roomConfig.roomCode) {
 
         roomConfig.roomCode = generateRoomCode();
 
@@ -122,7 +227,7 @@ function initializeLobby() {
     }
 
     // Jogadores presentes na sala local
-    const players = [
+    const players = isOnline ? converterJogadores(online.sala) : [
         {
             id: 'host',
             nickname: roomConfig.nickname,
@@ -132,9 +237,21 @@ function initializeLobby() {
     ];
 
     // Identificação do jogador atual
-    const currentPlayerId = isHost
-        ? 'host'
-        : 'guest-test';
+    const currentPlayerId = isOnline
+        ? online.uid
+        : isHost
+            ? 'host'
+            : 'guest-test';
+
+    function converterJogadores(sala) {
+        return Object.entries(sala.jogadores || {}).map(([id, jogador]) => ({
+            id,
+            nickname: jogador.nickname,
+            host: id === sala.anfitriao,
+            ready: jogador.pronto === true,
+            vaga: jogador.vaga
+        })).sort((a, b) => Number(b.host) - Number(a.host) || (a.vaga || 0) - (b.vaga || 0));
+    }
 
     // Participante fictício exclusivo do modo de teste
     if (guestTest) {
@@ -149,7 +266,7 @@ function initializeLobby() {
     }
 
     // Recupera o jogador atual
-    const currentPlayer = players.find(
+    let currentPlayer = players.find(
         player => player.id === currentPlayerId
     );
 
@@ -238,7 +355,7 @@ function initializeLobby() {
     function saveSettings() {
 
         // Convidados não podem alterar configurações
-        if (!isHost) {
+        if (isOnline || !isHost) {
             return;
         }
 
@@ -275,12 +392,13 @@ function initializeLobby() {
                 const setting = settings[target];
 
                 const minimum = target === 'players'
-                    ? Math.max(setting.min, players.length)
+                    ? Math.max(setting.min, players.length, ...players.map(player => player.vaga || 0))
                     : setting.min;
 
                 const nextValue = setting.value + step;
 
                 button.disabled =
+                    (isOnline && (salvandoConfiguracao || statusSala !== 'aguardando')) ||
                     !isHost ||
                     nextValue < minimum ||
                     nextValue > setting.max;
@@ -399,9 +517,11 @@ function initializeLobby() {
         playerCount.textContent =
             `${players.length}/${settings.players.value}`;
 
-        const connectedText = players.length === 1
-            ? '1 conectado'
-            : `${players.length} conectados`;
+        const connectedText = isOnline
+            ? `${players.length} na sala`
+            : players.length === 1
+                ? '1 conectado'
+                : `${players.length} conectados`;
 
         const availableText = availableSlots === 1
             ? '1 vaga disponível'
@@ -411,7 +531,7 @@ function initializeLobby() {
             `${connectedText} • ${availableText}`;
 
         document.getElementById('chat-online').textContent =
-            `${players.length} local`;
+            isOnline ? `${players.length} na sala` : `${players.length} local`;
 
         playersList.scrollTop = scrollPosition;
 
@@ -484,6 +604,7 @@ function initializeLobby() {
 
         // Estado do anfitrião
         startButton.disabled =
+            isOnline ||
             !isHost ||
             !enoughPlayers ||
             !everyoneReady;
@@ -545,16 +666,23 @@ function initializeLobby() {
 
         updateReadyButton();
 
+        if (isOnline) {
+            readyButton.disabled = isHost || salvandoPronto || !currentPlayer || statusSala !== 'aguardando';
+            if (isHost && enoughPlayers && everyoneReady) {
+                lobbyStatus.textContent = 'Todos prontos! Início da partida em desenvolvimento.';
+            }
+        }
+
     }
 
     // Botões de aumentar e diminuir configurações
     document.querySelectorAll('[data-target]')
         .forEach(button => {
 
-            button.addEventListener('click', () => {
+            button.addEventListener('click', async () => {
 
                 // Impede alterações feitas por convidados
-                if (!isHost) {
+                if (!isHost || button.disabled || (isOnline && (salvandoConfiguracao || statusSala !== 'aguardando'))) {
                     return;
                 }
 
@@ -564,7 +692,7 @@ function initializeLobby() {
                 const setting = settings[target];
 
                 const minimum = target === 'players'
-                    ? Math.max(setting.min, players.length)
+                    ? Math.max(setting.min, players.length, ...players.map(player => player.vaga || 0))
                     : setting.min;
 
                 const nextValue = setting.value + step;
@@ -573,6 +701,21 @@ function initializeLobby() {
                     nextValue >= minimum &&
                     nextValue <= setting.max
                 ) {
+
+                    if (isOnline) {
+                        salvandoConfiguracao = true;
+                        updateSettings();
+                        try {
+                            await online.salvarConfiguracao(camposOnline[target], nextValue);
+                        } catch (erro) {
+                            console.error('[STOP!] Erro ao salvar configuração:', erro);
+                            lobbyStatus.textContent = 'Não foi possível alterar a configuração. Tente novamente.';
+                        } finally {
+                            salvandoConfiguracao = false;
+                            updateSettings();
+                        }
+                        return;
+                    }
 
                     setting.value = nextValue;
 
@@ -586,9 +729,25 @@ function initializeLobby() {
         });
 
     // Confirmação de presença do convidado
-    readyButton.addEventListener('click', () => {
+    readyButton.addEventListener('click', async () => {
 
-        if (isHost) {
+        if (isHost || !currentPlayer || salvandoPronto) {
+            return;
+        }
+
+        if (isOnline) {
+            if (statusSala !== 'aguardando' || readyButton.disabled) return;
+            salvandoPronto = true;
+            readyButton.disabled = true;
+            try {
+                await online.salvarPronto(!currentPlayer.ready);
+            } catch (erro) {
+                console.error('[STOP!] Erro ao confirmar presença:', erro);
+                lobbyStatus.textContent = 'Não foi possível atualizar sua confirmação. Tente novamente.';
+            } finally {
+                salvandoPronto = false;
+                readyButton.disabled = isHost || statusSala !== 'aguardando' || !currentPlayer;
+            }
             return;
         }
 
@@ -673,5 +832,25 @@ function initializeLobby() {
     updateRole();
     updateSettings();
     renderPlayers();
+
+    // Atualiza a interface com os dados reais, sem registrar eventos duplicados.
+    return function atualizarSala(sala) {
+        if (!isOnline) return;
+        sincronizarConfig(sala);
+        statusSala = sala.status;
+        isHost = sala.anfitriao === currentPlayerId;
+        players.splice(0, players.length, ...converterJogadores(sala));
+        currentPlayer = players.find(player => player.id === currentPlayerId);
+        settings.players.value = roomConfig.players;
+        settings.time.value = roomConfig.time;
+        settings.cards.value = roomConfig.cards;
+        roomName.textContent = roomConfig.roomName;
+        roomMode.textContent = roomConfig.mode === 'com-call' ? '🎙 COM CALL' : '▤ SEM CALL';
+        voicePanel.hidden = roomConfig.mode !== 'com-call';
+        chatPanel.hidden = roomConfig.mode === 'com-call';
+        updateRole();
+        updateSettings();
+        renderPlayers();
+    };
 
 }

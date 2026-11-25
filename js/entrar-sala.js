@@ -1,9 +1,15 @@
+import { entrarSalaOnline } from './salas-online.js';
+
 const form = document.getElementById('join-form');
 const nickname = document.getElementById('nickname');
 const roomCode = document.getElementById('room-code');
 const joinButton = document.getElementById('join-button');
 const formStatus = document.getElementById('form-status');
 const modeTag = document.getElementById('mode-tag');
+
+// Controle da entrada online
+
+let entrandoSala = false;
 
 // Modalidade selecionada
 
@@ -136,6 +142,7 @@ function updateForm() {
         /^[A-Z0-9]{6}$/.test(roomCode.value);
 
     joinButton.disabled =
+        entrandoSala ||
         !validNickname ||
         !validCode ||
         !validMode;
@@ -189,11 +196,35 @@ roomCode.addEventListener('blur', () => {
     updateForm();
 });
 
+// Bloqueio temporário durante a entrada
+
+function controlarEntrada(ativa) {
+
+    entrandoSala = ativa;
+
+    nickname.disabled = ativa;
+
+    roomCode.disabled = ativa;
+
+    form.setAttribute(
+        'aria-busy',
+        String(ativa)
+    );
+
+    updateForm();
+}
+
 // Envio do formulário
 
-form.addEventListener('submit', event => {
+form.addEventListener('submit', async event => {
 
     event.preventDefault();
+
+    // Impede tentativas duplicadas.
+
+    if (entrandoSala) {
+        return;
+    }
 
     const validNickname = validateNickname();
     const validCode = validateRoomCode();
@@ -208,13 +239,77 @@ form.addEventListener('submit', event => {
         mode: mode
     };
 
-    sessionStorage.setItem(
-        'joinConfig',
-        JSON.stringify(joinConfig)
-    );
+    const textoOriginal = joinButton.innerHTML;
+
+    controlarEntrada(true);
+
+    joinButton.textContent = 'ENTRANDO...';
 
     formStatus.textContent =
-        'Dados salvos! Entrada online ainda não disponível.';
+        'Conectando à sala...';
+
+    try {
+
+        // Solicita a entrada no Firebase.
+
+        const salaOnline = await entrarSalaOnline(
+            joinConfig
+        );
+
+        // Armazena os dados utilizados pelo lobby.
+
+        sessionStorage.setItem(
+            'roomConfig',
+            JSON.stringify(salaOnline)
+        );
+
+        sessionStorage.setItem(
+            'joinConfig',
+            JSON.stringify(joinConfig)
+        );
+
+        formStatus.textContent =
+            'Entrada realizada com sucesso!';
+
+        console.info(
+            '[STOP!] Entrada na sala:',
+            salaOnline
+        );
+
+        // Redireciona o jogador para o lobby.
+
+        window.location.href = 'lobby.html';
+
+    } catch (erro) {
+
+        console.error(
+            '[STOP!] Erro ao entrar na sala:',
+            erro
+        );
+
+        if (
+            /permission.denied/i.test(
+                `${erro.code} ${erro.message}`
+            )
+        ) {
+
+            formStatus.textContent =
+                'Não foi possível obter permissão para entrar na sala.';
+
+        } else {
+
+            formStatus.textContent =
+                erro.message ||
+                'Não foi possível entrar na sala.';
+
+        }
+
+        joinButton.innerHTML = textoOriginal;
+
+        controlarEntrada(false);
+
+    }
+
 });
 
 // Inicialização
