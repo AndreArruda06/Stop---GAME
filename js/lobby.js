@@ -71,7 +71,7 @@ async function initializeOnlineLobby() {
         }
 
         const { database, autenticarJogador } = await import('./firebase-config.js');
-        const { ref, get, onValue, set, onDisconnect } = await import(
+        const { ref, get, onValue, set, onDisconnect, push, query, orderByKey, limitToLast, serverTimestamp, update } = await import(
             'https://www.gstatic.com/firebasejs/13.4.0/firebase-database.js'
         );
         const usuario = await autenticarJogador();
@@ -92,11 +92,14 @@ async function initializeOnlineLobby() {
         let atualizarConexao = () => {};
         let pararSala = () => {};
         let pararPresenca = () => {};
+        let pararChat = () => {};
+        const chatRef = ref(database, `chats/${codigo}`);
 
         function voltarParaSalas() {
             encerrando = true;
             pararSala();
             pararPresenca();
+            pararChat();
             sessionStorage.removeItem('roomConfig');
             sessionStorage.removeItem('joinConfig');
             window.location.replace(`salas.html?modo=${encodeURIComponent(roomConfig.mode)}`);
@@ -112,13 +115,30 @@ async function initializeOnlineLobby() {
                 encerrando = true;
                 geracao++;
                 try {
-                    await sairSalaOnline(codigo);
+                    if (sala.anfitriao === usuario.uid) {
+                        // Exclui a sala e o chat em uma operação atômica.
+                        await update(ref(database), {
+                            [`salas/${codigo}`]: null,
+                            [`chats/${codigo}`]: null
+                        });
+                    } else {
+                        await sairSalaOnline(codigo);
+                    }
                     voltarParaSalas();
                 } catch (erro) {
                     encerrando = false;
                     atualizarConexao();
                     throw erro;
                 }
+            },
+            enviarMensagem: texto => set(push(chatRef), {
+                uid: usuario.uid,
+                nickname: sala.jogadores[usuario.uid].nickname,
+                texto,
+                criadoEm: serverTimestamp()
+            }),
+            observarChat: (callback, erro) => {
+                pararChat = onValue(query(chatRef, orderByKey(), limitToLast(50)), callback, erro);
             },
             salvarConfiguracao: (campo, valor) => set(
                 ref(database, `salas/${codigo}/configuracoes/${campo}`),
@@ -172,6 +192,7 @@ async function initializeOnlineLobby() {
         window.addEventListener('pagehide', () => {
             pararSala();
             pararPresenca();
+            pararChat();
         }, { once: true });
         window.addEventListener('pageshow', evento => {
             if (evento.persisted) window.location.reload();
@@ -592,7 +613,7 @@ function initializeLobby(online = null) {
             `${connectedText} • ${availableText}`;
 
         document.getElementById('chat-online').textContent =
-            isOnline ? `${players.length} na sala` : `${players.length} local`;
+            isOnline ? `${players.filter(player => player.connected).length} online` : `${players.length} local`;
 
         playersList.scrollTop = scrollPosition;
 
@@ -875,6 +896,7 @@ function initializeLobby(online = null) {
         if (isOnline) {
             if (saindoSala || !online.estaConectado()) return;
             saindoSala = true;
+            atualizarChat();
             updateSettings();
             updateLobbyStatus();
             try {
@@ -882,6 +904,7 @@ function initializeLobby(online = null) {
             } catch (erro) {
                 console.error('[STOP!] Erro ao sair:', erro);
                 saindoSala = false;
+                atualizarChat();
                 updateSettings();
                 updateLobbyStatus();
                 lobbyStatus.textContent = 'Não foi possível sair da sala. Tente novamente.';
@@ -906,13 +929,91 @@ function initializeLobby(online = null) {
 
     });
 
-    // Impede envio de mensagens antes da integração online
-    document.getElementById('chat-form')
-        .addEventListener('submit', event => {
+    // Chat online do lobby (somente SEM CALL).
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+    const sendMessage = document.getElementById('send-message');
+    const chatMessages = document.getElementById('chat-messages');
+    let enviandoMensagem = false;
+    let chatCarregado = false;
+    let ultimoEnvio = 0;
+    let cooldownChat = null;
+    const chatNote = document.createElement('p');
+    chatNote.className = 'communication-note';
+    chatNote.setAttribute('role', 'status');
+    chatForm.after(chatNote);
 
-            event.preventDefault();
+    function atualizarChat() {
+        const permitido = isOnline && roomConfig.mode === 'sem-call' &&
+            chatCarregado && online.estaConectado() && !saindoSala &&
+            statusSala === 'aguardando';
+        chatInput.disabled = !permitido || enviandoMensagem;
+        sendMessage.disabled = !permitido || enviandoMensagem ||
+            !chatInput.value.trim() || chatInput.value.trim().length > 200 ||
+            Date.now() - ultimoEnvio < 1000;
+    }
 
+    function renderChat(snapshot) {
+        const pertoDoFim = chatMessages.scrollHeight - chatMessages.scrollTop -
+            chatMessages.clientHeight < 40;
+        const primeiro = !chatCarregado;
+        const fragmento = document.createDocumentFragment();
+        snapshot.forEach(item => {
+            const mensagem = item.val();
+            const linha = document.createElement('p');
+            linha.style.cssText = 'margin:0 0 8px; overflow-wrap:anywhere; white-space:pre-wrap;';
+            const autor = document.createElement('strong');
+            autor.textContent = mensagem.uid === currentPlayerId
+                ? `${mensagem.nickname} (você): ` : `${mensagem.nickname}: `;
+            linha.append(autor, document.createTextNode(mensagem.texto));
+            fragmento.appendChild(linha);
         });
+        if (!snapshot.exists()) {
+            const vazio = document.createElement('p');
+            vazio.className = 'chat-empty';
+            vazio.textContent = 'Nenhuma mensagem ainda. Dê um oi para a turma!';
+            fragmento.appendChild(vazio);
+        }
+        chatMessages.replaceChildren(fragmento);
+        if (primeiro || pertoDoFim) chatMessages.scrollTop = chatMessages.scrollHeight;
+        chatCarregado = true;
+        atualizarChat();
+    }
+
+    chatInput.addEventListener('input', atualizarChat);
+    chatForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        atualizarChat();
+        if (sendMessage.disabled) return;
+        const texto = chatInput.value.trim();
+        enviandoMensagem = true;
+        atualizarChat();
+        chatNote.textContent = '';
+        try {
+            await online.enviarMensagem(texto);
+            chatInput.value = '';
+            ultimoEnvio = Date.now();
+            clearTimeout(cooldownChat);
+            cooldownChat = setTimeout(atualizarChat, 1000);
+        } catch (erro) {
+            console.error('[STOP!] Erro no chat:', erro);
+            chatNote.textContent = 'Não foi possível enviar. Tente novamente.';
+        } finally {
+            enviandoMensagem = false;
+            atualizarChat();
+            if (!chatInput.disabled) chatInput.focus();
+        }
+    });
+
+    if (isOnline && roomConfig.mode === 'sem-call') {
+        online.observarChat(renderChat, erro => {
+            console.error('[STOP!] Erro ao consultar chat:', erro);
+            chatCarregado = false;
+            atualizarChat();
+            chatNote.textContent = 'Chat indisponível. Recarregue a página.';
+        });
+    }
+    atualizarChat();
 
     // Inicialização
     updateRole();
@@ -922,6 +1023,7 @@ function initializeLobby(online = null) {
     if (isOnline) online.registrarAtualizacaoConexao(() => {
         updateSettings();
         updateLobbyStatus();
+        atualizarChat();
     });
 
     // Atualiza a interface com os dados reais, sem registrar eventos duplicados.
@@ -942,6 +1044,7 @@ function initializeLobby(online = null) {
         updateRole();
         updateSettings();
         renderPlayers();
+        atualizarChat();
     };
 
 }
