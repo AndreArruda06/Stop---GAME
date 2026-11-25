@@ -71,7 +71,7 @@ async function initializeOnlineLobby() {
         }
 
         const { database, autenticarJogador } = await import('./firebase-config.js');
-        const { ref, get, onValue, set } = await import(
+        const { ref, get, onValue, set, onDisconnect } = await import(
             'https://www.gstatic.com/firebasejs/13.4.0/firebase-database.js'
         );
         const usuario = await autenticarJogador();
@@ -84,9 +84,42 @@ async function initializeOnlineLobby() {
             throw new Error('Sala indisponível para este jogador.');
         }
 
+        const { sairSalaOnline } = await import('./salas-online.js');
+        const presenca = ref(database, `salas/${codigo}/jogadores/${usuario.uid}/conectado`);
+        let conectado = false;
+        let encerrando = false;
+        let geracao = 0;
+        let atualizarConexao = () => {};
+        let pararSala = () => {};
+        let pararPresenca = () => {};
+
+        function voltarParaSalas() {
+            encerrando = true;
+            pararSala();
+            pararPresenca();
+            sessionStorage.removeItem('roomConfig');
+            sessionStorage.removeItem('joinConfig');
+            window.location.replace(`salas.html?modo=${encodeURIComponent(roomConfig.mode)}`);
+        }
+
         const atualizarSala = initializeLobby({
             uid: usuario.uid,
             sala,
+            estaConectado: () => conectado && !encerrando,
+            registrarAtualizacaoConexao: callback => { atualizarConexao = callback; },
+            sair: async () => {
+                if (!conectado || encerrando) throw new Error('Aguarde a reconexão para sair.');
+                encerrando = true;
+                geracao++;
+                try {
+                    await sairSalaOnline(codigo);
+                    voltarParaSalas();
+                } catch (erro) {
+                    encerrando = false;
+                    atualizarConexao();
+                    throw erro;
+                }
+            },
             salvarConfiguracao: (campo, valor) => set(
                 ref(database, `salas/${codigo}/configuracoes/${campo}`),
                 valor
@@ -99,14 +132,11 @@ async function initializeOnlineLobby() {
         copyCode.disabled = false;
         leaveButton.disabled = false;
 
-        const cancelar = onValue(referencia, snapshotAtual => {
+        pararSala = onValue(referencia, snapshotAtual => {
+            if (encerrando) return;
             const salaAtual = snapshotAtual.val();
             if (!salaAtual || !salaAtual.jogadores?.[usuario.uid]) {
-                lobbyStatus.textContent = 'Seu acesso à sala foi encerrado.';
-                playersList.replaceChildren();
-                document.querySelectorAll('[data-target]').forEach(button => { button.disabled = true; });
-                startButton.disabled = true;
-                readyButton.disabled = true;
+                voltarParaSalas();
                 return;
             }
             atualizarSala(salaAtual);
@@ -118,7 +148,34 @@ async function initializeOnlineLobby() {
             readyButton.disabled = true;
         });
 
-        window.addEventListener('pagehide', cancelar, { once: true });
+        // O servidor marca a desconexão sem excluir a vaga.
+        pararPresenca = onValue(ref(database, '.info/connected'), async snapshotConexao => {
+            const tentativa = ++geracao;
+            conectado = false;
+            atualizarConexao();
+            if (encerrando || snapshotConexao.val() !== true) return;
+            try {
+                // Registra a ação antes de indicar presença online.
+                await onDisconnect(presenca).set(false);
+                if (encerrando || tentativa !== geracao) return;
+                await set(presenca, true);
+                if (encerrando || tentativa !== geracao) return;
+                conectado = true;
+                atualizarConexao();
+            } catch (erro) {
+                console.error('[STOP!] Erro ao registrar presença:', erro);
+                lobbyStatus.textContent = 'Não foi possível registrar a conexão.';
+            }
+        });
+
+        // Não remove a sala nem o jogador ao atualizar a página.
+        window.addEventListener('pagehide', () => {
+            pararSala();
+            pararPresenca();
+        }, { once: true });
+        window.addEventListener('pageshow', evento => {
+            if (evento.persisted) window.location.reload();
+        });
 
     } catch (erro) {
         console.error('[STOP!] Erro ao carregar sala:', erro);
@@ -134,6 +191,7 @@ async function initializeOnlineLobby() {
 function initializeLobby(online = null) {
 
     const isOnline = online !== null;
+    let saindoSala = false;
     let salvandoPronto = false;
     let salvandoConfiguracao = false;
     const camposOnline = { players: "maxJogadores", time: "tempo", cards: "quantidadeCartas" };
@@ -249,6 +307,7 @@ function initializeLobby(online = null) {
             nickname: jogador.nickname,
             host: id === sala.anfitriao,
             ready: jogador.pronto === true,
+            connected: jogador.conectado === true,
             vaga: jogador.vaga
         })).sort((a, b) => Number(b.host) - Number(a.host) || (a.vaga || 0) - (b.vaga || 0));
     }
@@ -398,7 +457,7 @@ function initializeLobby(online = null) {
                 const nextValue = setting.value + step;
 
                 button.disabled =
-                    (isOnline && (salvandoConfiguracao || statusSala !== 'aguardando')) ||
+                    (isOnline && (salvandoConfiguracao || saindoSala || !online.estaConectado() || statusSala !== 'aguardando')) ||
                     !isHost ||
                     nextValue < minimum ||
                     nextValue > setting.max;
@@ -456,9 +515,11 @@ function initializeLobby(online = null) {
             ? 'player-status ready'
             : 'player-status waiting';
 
-        status.textContent = player.ready
-            ? 'Pronto'
-            : 'Aguardando';
+        status.textContent = isOnline && !player.connected
+            ? 'Desconectado'
+            : player.ready ? 'Pronto' : 'Aguardando';
+
+        if (isOnline && !player.connected) status.className = 'player-status waiting';
 
         row.appendChild(status);
 
@@ -518,7 +579,7 @@ function initializeLobby(online = null) {
             `${players.length}/${settings.players.value}`;
 
         const connectedText = isOnline
-            ? `${players.length} na sala`
+            ? `${players.filter(player => player.connected).length} conectados`
             : players.length === 1
                 ? '1 conectado'
                 : `${players.length} conectados`;
@@ -599,7 +660,7 @@ function initializeLobby(online = null) {
         const enoughPlayers = players.length >= 2;
 
         const everyoneReady = players.every(
-            player => player.ready
+            player => player.ready && (!isOnline || player.connected)
         );
 
         // Estado do anfitrião
@@ -667,9 +728,17 @@ function initializeLobby(online = null) {
         updateReadyButton();
 
         if (isOnline) {
-            readyButton.disabled = isHost || salvandoPronto || !currentPlayer || statusSala !== 'aguardando';
+            readyButton.disabled = isHost || salvandoPronto || saindoSala || !online.estaConectado() || !currentPlayer || statusSala !== 'aguardando';
+            leaveButton.disabled = saindoSala || !online.estaConectado();
             if (isHost && enoughPlayers && everyoneReady) {
                 lobbyStatus.textContent = 'Todos prontos! Início da partida em desenvolvimento.';
+            }
+            if (!online.estaConectado()) {
+                lobbyStatus.textContent = 'Conexão indisponível. Aguardando reconexão...';
+            } else if (players.some(player => player.host && !player.connected)) {
+                lobbyStatus.textContent = 'Anfitrião desconectado. Aguardando reconexão...';
+            } else if (players.some(player => !player.connected)) {
+                lobbyStatus.textContent = 'Há jogadores desconectados. As vagas continuam reservadas.';
             }
         }
 
@@ -682,7 +751,7 @@ function initializeLobby(online = null) {
             button.addEventListener('click', async () => {
 
                 // Impede alterações feitas por convidados
-                if (!isHost || button.disabled || (isOnline && (salvandoConfiguracao || statusSala !== 'aguardando'))) {
+                if (!isHost || button.disabled || (isOnline && (salvandoConfiguracao || saindoSala || !online.estaConectado() || statusSala !== 'aguardando'))) {
                     return;
                 }
 
@@ -746,7 +815,7 @@ function initializeLobby(online = null) {
                 lobbyStatus.textContent = 'Não foi possível atualizar sua confirmação. Tente novamente.';
             } finally {
                 salvandoPronto = false;
-                readyButton.disabled = isHost || statusSala !== 'aguardando' || !currentPlayer;
+                readyButton.disabled = isHost || saindoSala || !online.estaConectado() || statusSala !== 'aguardando' || !currentPlayer;
             }
             return;
         }
@@ -801,7 +870,24 @@ function initializeLobby(online = null) {
     });
 
     // Sair da sala
-    leaveButton.addEventListener('click', () => {
+    leaveButton.addEventListener('click', async () => {
+
+        if (isOnline) {
+            if (saindoSala || !online.estaConectado()) return;
+            saindoSala = true;
+            updateSettings();
+            updateLobbyStatus();
+            try {
+                await online.sair();
+            } catch (erro) {
+                console.error('[STOP!] Erro ao sair:', erro);
+                saindoSala = false;
+                updateSettings();
+                updateLobbyStatus();
+                lobbyStatus.textContent = 'Não foi possível sair da sala. Tente novamente.';
+            }
+            return;
+        }
 
         // Encerra somente a simulação do convidado
         if (guestTest) {
@@ -832,6 +918,11 @@ function initializeLobby(online = null) {
     updateRole();
     updateSettings();
     renderPlayers();
+
+    if (isOnline) online.registrarAtualizacaoConexao(() => {
+        updateSettings();
+        updateLobbyStatus();
+    });
 
     // Atualiza a interface com os dados reais, sem registrar eventos duplicados.
     return function atualizarSala(sala) {

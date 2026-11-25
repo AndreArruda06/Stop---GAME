@@ -12,6 +12,7 @@ import {
     set,
     get,
     update,
+    remove,
     serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/13.4.0/firebase-database.js';
 
@@ -499,6 +500,41 @@ async function entrarSalaOnline(config) {
 }
 
 // ========================================
+// SAIR DA SALA ONLINE
+// ========================================
+
+async function sairSalaOnline(codigo) {
+
+    if (typeof codigo !== 'string' || !/^[A-Z0-9]{6}$/.test(codigo)) {
+        throw new Error('Código da sala inválido.');
+    }
+
+    const usuario = await autenticarJogador();
+    const referencia = ref(database, `salas/${codigo}`);
+    const sala = (await get(referencia)).val();
+
+    if (!sala || !sala.jogadores?.[usuario.uid]) return;
+
+    if (sala.status !== 'aguardando') {
+        throw new Error('A sala não está mais no lobby.');
+    }
+
+    if (sala.anfitriao === usuario.uid) {
+        await remove(referencia);
+        return;
+    }
+
+    const vaga = sala.jogadores[usuario.uid].vaga;
+
+    // Libera a vaga e remove o jogador na mesma operação.
+    await update(referencia, {
+        [`jogadores/${usuario.uid}`]: null,
+        [`vagas/${vaga}`]: null
+    });
+
+}
+
+// ========================================
 // EXPORTAÇÃO DAS FUNÇÕES
 // ========================================
 
@@ -507,6 +543,8 @@ export {
     criarSalaOnline,
 
     entrarSalaOnline,
+
+    sairSalaOnline,
 
     gerarCodigoSala
 
