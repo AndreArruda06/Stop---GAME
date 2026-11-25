@@ -298,6 +298,16 @@
 
         }
 
+        // Valida também a classificação recebida do Firebase.
+        if (result.online === true) {
+            const ids = new Set(result.ranking.map(p => p.id));
+            if (ids.size !== result.ranking.length ||
+                result.ranking.reduce((soma, p) => soma + p.score, 0) !== result.totalRounds ||
+                result.ranking.some(p => p.totalHits > result.totalRounds * 26 ||
+                    p.score > result.champion.score ||
+                    (p.score === result.champion.score && p.totalHits > result.champion.totalHits))) return false;
+        }
+
         // Impede a exibição de resultados incompletos.
 
         return true;

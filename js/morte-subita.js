@@ -1498,7 +1498,25 @@
         os estados internos dos arquivos.
     */
 
+    // Estado de desempate vindo do Firebase. Não sorteia nem pontua localmente.
+    function sincronizarOnline(tentativa, jogadores, bancoCartas) {
+        if (!tentativa) { resetar(); return; }
+        estado.ativa = true;
+        estado.tipo = tentativa.rodada === 0 ? 'final' : 'rodada';
+        estado.tentativa = tentativa.numero;
+        estado.participantes = jogadores.filter(p => tentativa.participantes?.[p.vaga]).map(p => p.id);
+        estado.acertos.clear();
+        jogadores.forEach(p => {
+            if (estado.participantes.includes(p.id)) estado.acertos.set(p.id, tentativa.jogadas?.acertos?.[p.vaga] || 0);
+        });
+        const carta = bancoCartas.find(c => c.id === tentativa.sorteio?.cartaId);
+        estado.temaAtual = carta ? { ...carta, isTiebreak: true } : null;
+        estado.vencedor = jogadores.find(p => p.vaga === tentativa.jogadas?.vencedor) || null;
+    }
+
     window.MorteSubita = Object.freeze({
+
+        sincronizarOnline,
 
         iniciar,
 

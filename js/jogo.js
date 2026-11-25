@@ -301,7 +301,7 @@
             const referencia = ref(database, `salas/${codigo}`);
             const sala = (await get(referencia)).val();
             if (!sala?.jogadores?.[usuario.uid]) throw new Error('Você não pertence à sala.');
-            if (sala.status !== 'preparando') {
+            if (!['preparando', 'encerrada'].includes(sala.status)) {
                 window.location.replace('lobby.html');
                 return;
             }
@@ -670,6 +670,7 @@
     function selectLetter(letter) {
 
         if (preparacaoOnline) {
+            if (chaveDesempateOnline) return;
             enviarJogadaOnline('letra', letter);
             return;
         }
@@ -3814,7 +3815,7 @@
 
     function finishMatch() {
 
-        if (preparacaoOnline) return;
+        if (preparacaoOnline) { prepararResultadoFinalOnline(); return; }
 
         // Exige que a última rodada esteja encerrada.
 
@@ -4877,7 +4878,7 @@
     $('back-button').addEventListener('click', async () => {
 
         if (preparacaoOnline) {
-            if (!roomConfig.isHost || $('back-button').disabled) return;
+            if (!roomConfig.isHost || $('back-button').disabled || placarFinalOnline || finalizandoOnline) return;
             $('back-button').disabled = true;
             preparacaoOnline.cancelando = true;
             atualizarBotoesSorteioOnline();
@@ -4888,6 +4889,8 @@
                     [`${caminho}/status`]: 'aguardando',
                     [`${caminho}/rodadas`]: null,
                     [`${caminho}/cartasUsadas`]: null,
+                    [`${caminho}/desempates`]: null,
+                    [`votosDesempate/${config.roomCode}`]: null,
                     [`votosContestacao/${config.roomCode}`]: null
                 });
                 window.location.replace('lobby.html');
@@ -5025,10 +5028,206 @@
     let rodadasOnline = {};
     let cartasUsadasOnline = {};
     let iniciadorOnline = 1;
+    let desempatesOnline = {};
+    let chaveDesempateOnline = null;
+    let tentativaDesempateOnline = null;
+    let msEnviando = false;
+    let proximaTentativaMs = 0;
+    let placarFinalOnline = null;
+    let resultadoFinalOnline = null;
+    let finalizandoOnline = false;
+    let proximaTentativaFinal = 0;
+
+    // Cada carta tem peso superior ao máximo de acertos da partida (26 x 26).
+    // A comparação de um inteiro preserva exatamente os dois critérios do ranking.
+    const PESO_CARTA_ONLINE = 677;
+    function calcularPlacarFinalOnline(ultimaVaga) {
+        const valores = {};
+        for (const jogador of players) {
+            let pontos = 0;
+            for (let n = 1; n <= config.cards; n++) {
+                const dados = rodadasOnline[n]?.jogadas;
+                if (!dados?.fim) throw new Error('Rodada incompleta: ' + n);
+                const vencedor = n === config.cards ? ultimaVaga : dados.vencedor;
+                if (!vencedor) throw new Error('Rodada sem vencedor: ' + n);
+                pontos += (vencedor === jogador.vaga ? PESO_CARTA_ONLINE : 0) + (dados.acertos?.[jogador.vaga] || 0);
+            }
+            valores[jogador.vaga] = pontos;
+        }
+        return { valores, lider: Math.max(...Object.values(valores)) };
+    }
+
+    function lideresFinalOnline() {
+        if (!placarFinalOnline) return [];
+        return players.filter(p => placarFinalOnline.valores?.[p.vaga] === placarFinalOnline.lider);
+    }
+
+    async function prepararResultadoFinalOnline() {
+        if (!roundFinished || round !== config.cards || !roundWinner || placarFinalOnline ||
+            roundWinner.id !== preparacaoOnline.uid || !sorteioConectado || finalizandoOnline || preparacaoOnline.cancelando) return;
+        finalizandoOnline = true;
+        finishGameButton.disabled = true;
+        try {
+            const vaga = roundWinner.vaga;
+            const placar = calcularPlacarFinalOnline(vaga);
+            await preparacaoOnline.update(preparacaoOnline.referencia, {
+                [`rodadas/${round}/jogadas/vencedor`]: vaga,
+                placarFinal: placar
+            });
+        } catch (erro) {
+            console.error('[STOP!] Falha ao confirmar o placar final:', erro);
+            roundWinnerNext.textContent = 'Não foi possível confirmar a classificação. Tente novamente.';
+        } finally {
+            finalizandoOnline = false;
+            atualizarControlesJogadaOnline();
+            avancarFinalOnline();
+        }
+    }
+
+    // O desempate pelo campeonato usa rodada 0, sem consumir uma carta.
+    async function avancarFinalOnline() {
+        if (!placarFinalOnline || chaveDesempateOnline || resultadoFinalOnline || finalizandoOnline ||
+            !sorteioConectado || !relogioOnlinePronto || Date.now() < proximaTentativaFinal) return;
+        const lideres = lideresFinalOnline();
+        if (lideres.length === 1) { publicarResultadoOnline(lideres[0]); return; }
+        if (lideres.length < 2) return;
+        finalizandoOnline = true;
+        proximaTentativaFinal = Date.now() + 1800;
+        try {
+            await preparacaoOnline.set(preparacaoOnline.ref(preparacaoOnline.database,
+                `salas/${config.roomCode}/desempates/0-1`), {
+                rodada: 0, numero: 1, origem: 'placarFinal', maiorAcerto: placarFinalOnline.lider,
+                participantes: Object.fromEntries(lideres.map(p => [p.vaga, true])), iniciador: lideres[0].vaga
+            });
+        } catch (erro) {
+            console.debug('[STOP!] Desempate pelo campeonato:', erro.code || erro.message);
+        } finally { finalizandoOnline = false; }
+    }
+
+    async function publicarResultadoOnline(vencedor, chave = null) {
+        if (resultadoFinalOnline || finalizandoOnline || !sorteioConectado || Date.now() < proximaTentativaFinal) return;
+        finalizandoOnline = true;
+        proximaTentativaFinal = Date.now() + 1800;
+        try {
+            const resultado = { vaga: vencedor.vaga };
+            if (chave) resultado.desempate = chave;
+            await preparacaoOnline.update(preparacaoOnline.referencia, { resultadoFinal: resultado, status: 'encerrada' });
+        } catch (erro) {
+            console.debug('[STOP!] Encerramento da partida:', erro.code || erro.message);
+        } finally {
+            finalizandoOnline = false;
+            if (resultadoFinalOnline) abrirResultadoFinalOnline();
+        }
+    }
+
+    function abrirResultadoFinalOnline() {
+        if (matchFinished || finalizandoOnline || !placarFinalOnline || !resultadoFinalOnline) return;
+        const ranking = players.map(p => {
+            const valor = placarFinalOnline.valores?.[p.vaga];
+            if (!Number.isInteger(valor) || valor < 0) return null;
+            return { id: p.id, nickname: p.nickname, avatar: getPlayerAvatar(p),
+                score: Math.floor(valor / PESO_CARTA_ONLINE), totalHits: valor % PESO_CARTA_ONLINE };
+        });
+        if (ranking.some(p => !p)) return;
+        const campeaoId = players.find(p => p.vaga === resultadoFinalOnline.vaga)?.id;
+        const champion = ranking.find(p => p.id === campeaoId);
+        if (!champion) return;
+        ranking.sort((a,b) => b.score-a.score || b.totalHits-a.totalHits || Number(b.id===campeaoId)-Number(a.id===campeaoId));
+        try {
+            sessionStorage.setItem('matchResult', JSON.stringify({ roomCode: config.roomCode, mode: config.mode,
+                totalRounds: config.cards, completedRounds: config.cards, champion, ranking,
+                decidedByTiebreak: Boolean(resultadoFinalOnline.desempate), modoTeste: false, online: true }));
+        } catch (erro) {
+            console.error('[STOP!] Não foi possível salvar o resultado:', erro);
+            $('game-status').textContent = 'Não foi possível salvar o resultado. Atualize a página para tentar novamente.';
+            return;
+        }
+        matchFinished = true;
+        stopTimer();
+        clearInterval(intervaloOnline);
+        contestacao?.sincronizarOnline(null);
+        ms?.resetar();
+        window.location.replace('resultado.html');
+    }
+
+
+    function caminhoSequenciaOnline() {
+        return chaveDesempateOnline ? `desempates/${chaveDesempateOnline}` : `rodadas/${round}`;
+    }
+
+    function raizSequenciaOnline() {
+        return `salas/${config.roomCode}/${caminhoSequenciaOnline()}`;
+    }
+
+    function sorteioLetraOnline() {
+        const livres = [...alphabet].filter(letra => !usedLetters.has(letra));
+        if (!livres.length) throw new Error('Não há letras livres.');
+        const indice = new Uint32Array(1);
+        crypto.getRandomValues(indice);
+        return livres[indice[0] % livres.length];
+    }
+
+    function anexarTurnoOnline(alteracoes, numero, vaga, anteriorVaga) {
+        const turno = { numero, vaga, anteriorVaga, inicioEm: preparacaoOnline.serverTimestamp() };
+        if (chaveDesempateOnline) {
+            turno.letra = sorteioLetraOnline();
+            alteracoes[`jogadas/letras/${turno.letra}`] = numero;
+        }
+        alteracoes[`jogadas/turnos/${numero}`] = turno;
+        alteracoes['jogadas/atual'] = numero;
+    }
+
+    function lideresSequenciaOnline(dados, tentativa = null) {
+        const ativos = players.filter(p => (!tentativa || tentativa.participantes?.[p.vaga]) && !dados?.eliminados?.[p.vaga]);
+        const maior = Math.max(0, ...ativos.map(p => dados?.acertos?.[p.vaga] || 0));
+        return { maior, lideres: ativos.filter(p => (dados?.acertos?.[p.vaga] || 0) === maior) };
+    }
+
+    async function criarDesempateOnline(lideres, maior) {
+        if (msEnviando || !sorteioConectado || preparacaoOnline.cancelando || Date.now() < proximaTentativaMs) return;
+        const numero = (tentativaDesempateOnline?.numero || 0) + 1;
+        const rodada = tentativaDesempateOnline?.rodada === 0 ? 0 : round;
+        const chave = `${rodada}-${numero}`;
+        const origem = caminhoSequenciaOnline();
+        const participantes = Object.fromEntries(lideres.map(p => [p.vaga, true]));
+        const iniciador = lideres.find(p => p.vaga > (turnoAtualOnline?.vaga || 0))?.vaga || lideres[0].vaga;
+        msEnviando = true;
+        proximaTentativaMs = Date.now() + 1800;
+        $('game-status').textContent = 'Empate! Sincronizando a morte súbita...';
+        try {
+            await preparacaoOnline.set(preparacaoOnline.ref(preparacaoOnline.database, `salas/${config.roomCode}/desempates/${chave}`), {
+                rodada, numero, origem, maiorAcerto: maior, participantes, iniciador
+            });
+        } catch (erro) {
+            console.debug('[STOP!] Criação do desempate:', erro.code || erro.message);
+        } finally { msEnviando = false; }
+    }
+
+    async function registrarVencedorDesempateOnline(vencedor) {
+        if (msEnviando || !sorteioConectado || preparacaoOnline.cancelando || Date.now() < proximaTentativaMs) return;
+        const chave = chaveDesempateOnline;
+        const rodada = round;
+        msEnviando = true;
+        proximaTentativaMs = Date.now() + 1800;
+        try {
+            if (!jogadasOnline.vencedor) {
+                await preparacaoOnline.set(preparacaoOnline.ref(preparacaoOnline.database, `salas/${config.roomCode}/desempates/${chave}/jogadas/vencedor`), vencedor.vaga);
+            }
+            if (tentativaDesempateOnline?.rodada === 0) {
+                // O vencedor extra não recebe carta nem acertos da partida.
+                proximaTentativaFinal = 0;
+                await publicarResultadoOnline(vencedor, chave);
+            } else {
+                await preparacaoOnline.set(preparacaoOnline.ref(preparacaoOnline.database, `salas/${config.roomCode}/rodadas/${rodada}/desempate`), chave);
+            }
+        } catch (erro) {
+            console.debug('[STOP!] Confirmação do vencedor do desempate:', erro.code || erro.message);
+        } finally { msEnviando = false; }
+    }
 
     function referenciaRodadaOnline(numero = round) {
         return preparacaoOnline.ref(preparacaoOnline.database,
-            `salas/${config.roomCode}/rodadas/${numero}`);
+            `salas/${config.roomCode}/${chaveDesempateOnline ? `desempates/${chaveDesempateOnline}` : `rodadas/${numero}`}`);
     }
 
     function jogadorIniciadorOnline() {
@@ -5046,6 +5245,7 @@
 
     function vencedorDosRegistrosOnline(dados) {
         if (!dados?.fim) return null;
+        if (dados.vencedor) return players.find(p => p.vaga === dados.vencedor) || null;
         const ativos = players.filter(p => !dados.eliminados?.[p.vaga]);
         const maior = Math.max(...ativos.map(p => dados.acertos?.[p.vaga] || 0));
         const lideres = ativos.filter(p => (dados.acertos?.[p.vaga] || 0) === maior);
@@ -5096,7 +5296,7 @@
     }
 
     function ajustarBaralhoOnline() {
-        const restantes = Math.max(0, config.cards - round + (sorteioOnline ? 0 : 1));
+        const restantes = Math.max(0, config.cards - round + (rodadasOnline[round]?.sorteio ? 0 : 1));
         const livres = BANCO_CARTAS.filter(c => !cartasUsadasOnline[c.id]);
         matchDeck.splice(0, matchDeck.length, ...livres.slice(0, restantes));
         updateRemainingCards();
@@ -5106,9 +5306,24 @@
         rodadasOnline = sala.rodadas || {};
         cartasUsadasOnline = sala.cartasUsadas || {};
         const numero = Math.max(1, ...Object.keys(rodadasOnline).map(Number));
-        const dados = rodadasOnline[numero];
+        const dadosNormais = rodadasOnline[numero];
+        desempatesOnline = sala.desempates || {};
+        placarFinalOnline = sala.placarFinal || null;
+        resultadoFinalOnline = sala.resultadoFinal || null;
+        if (sala.status === 'encerrada' && resultadoFinalOnline) {
+            abrirResultadoFinalOnline();
+            return;
+        }
+        const ultimo = (placarFinalOnline || !dadosNormais?.desempate) && Object.entries(desempatesOnline)
+            .filter(([, d]) => d?.rodada === (placarFinalOnline ? 0 : numero))
+            .sort((a, b) => b[1].numero - a[1].numero)[0];
+        const novaChave = ultimo ? ultimo[0] : null;
+        const mudouSequencia = novaChave !== chaveDesempateOnline;
+        chaveDesempateOnline = novaChave;
+        tentativaDesempateOnline = ultimo ? ultimo[1] : null;
+        const dados = tentativaDesempateOnline || dadosNormais;
         const novo = dados?.sorteio || null;
-        const mudouRodada = inicial || numero !== round;
+        const mudouRodada = inicial || numero !== round || mudouSequencia;
         const mudouSorteio = mudouRodada || novo?.cartaId !== sorteioOnline?.cartaId || novo?.fase !== sorteioOnline?.fase;
         const animar = !inicial && !mudouRodada && !sorteioPrimeiraLeitura && !sorteioOnline && novo?.fase === 'sorteada';
         sorteioOnline = novo;
@@ -5117,6 +5332,16 @@
         sorteioPrimeiraLeitura = false;
         if (mudouRodada) {
             round = numero;
+            proximaTentativaMs = 0;
+            if (chaveDesempateOnline) {
+                ms.sincronizarOnline(tentativaDesempateOnline, players, BANCO_CARTAS);
+                setTiebreakLabels(true);
+                if (tentativaDesempateOnline.rodada === 0) $('game-eyebrow').textContent = 'DESEMPATE PELO CAMPEONATO';
+                ms.ativarEfeitos();
+            } else if (ms?.estaAtiva()) {
+                ms.resetar();
+                setTiebreakLabels(false);
+            }
             roundFinished = false;
             roundStarted = false;
             roundWinner = null;
@@ -5128,7 +5353,12 @@
             currentPlayerIndex = Math.max(0, players.findIndex(p => p.vaga === iniciadorOnline));
             contestacao?.sincronizarOnline(null);
             reconstruirHistoricoOnline();
+            if (placarFinalOnline) players.forEach(p => { p.score = Math.floor(placarFinalOnline.valores[p.vaga] / PESO_CARTA_ONLINE); });
             reactivatePlayers();
+            if (tentativaDesempateOnline) players.forEach(p => {
+                p.eliminated = !tentativaDesempateOnline.participantes?.[p.vaga];
+                p.spectator = p.eliminated;
+            });
             usedAnswers.clear();
             lastConfirmedAnswer = null;
             resetWheel();
@@ -5150,6 +5380,12 @@
             if (!inicial && sorteioCapturado) requestBackgroundCapture();
         }
         ajustarBaralhoOnline();
+        if (placarFinalOnline && !chaveDesempateOnline) {
+            finishGameButton.disabled = true;
+            roundWinnerNext.textContent = 'Confirmando o campeão ou o desempate final...';
+            avancarFinalOnline();
+            return;
+        }
         if (mudouSorteio) aplicarSorteioOnline(novo, animar);
         else aplicarJogadasOnline(jogadasOnline);
     }
@@ -5248,7 +5484,7 @@
     }
 
     function caminhoVotosOnline(c) {
-        return `votosContestacao/${config.roomCode}/${round}/${c.alvo}/${c.inicioEm}`;
+        return `${chaveDesempateOnline ? "votosDesempate" : "votosContestacao"}/${config.roomCode}/${chaveDesempateOnline || round}/${c.alvo}/${c.inicioEm}`;
     }
 
     function sincronizarContestacaoOnline() {
@@ -5266,10 +5502,11 @@
         if (!autor || !contestador) return;
         gameScreen.setAttribute('inert', '');
         contestacao.sincronizarOnline({
-            chave: `${round}/${c.alvo}/${c.inicioEm}`, jogadores: players,
+            chave: `${caminhoSequenciaOnline()}/${c.alvo}/${c.inicioEm}`, jogadores: players,
             jogadorLocalId: preparacaoOnline.uid, contestador,
             resposta: { id: c.alvo, playerId: autor.id, playerName: autor.nickname, round,
-                theme: currentCard.tema, letter: t.letra, mode: config.mode, answer: t.resposta },
+                theme: currentCard.tema, letter: t.letra, mode: config.mode, answer: t.resposta,
+                isTiebreak: Boolean(chaveDesempateOnline), tiebreakAttempt: tentativaDesempateOnline?.numero || null },
             votaram: players.filter(p => c.votaram?.[p.vaga]).map(p => p.id),
             falta: c.inicioEm + 10000 - horarioServidorOnline(), resultado: c.resultado || null,
             ocupado: contestacaoEnviando || !sorteioConectado,
@@ -5289,7 +5526,7 @@
         await executarContestacaoOnline(() => preparacaoOnline.update(preparacaoOnline.ref(preparacaoOnline.database), {
             [`${caminhoVotosOnline(c)}/escolhas/${local.vaga}`]: voto,
             [`${caminhoVotosOnline(c)}/totais/${voto}`]: preparacaoOnline.increment(1),
-            [`salas/${config.roomCode}/rodadas/${round}/jogadas/contestacoes/${c.alvo}/votaram/${local.vaga}`]: true
+            [`${raizSequenciaOnline()}/jogadas/contestacoes/${c.alvo}/votaram/${local.vaga}`]: true
         }));
     }
 
@@ -5323,7 +5560,7 @@
         const c = contestacaoPendenteOnline();
         if (!c?.resultado) return;
         await executarContestacaoOnline(() => preparacaoOnline.update(preparacaoOnline.ref(preparacaoOnline.database), {
-            [`salas/${config.roomCode}/rodadas/${round}/jogadas/contestacoes/${c.alvo}/retomadaEm`]: preparacaoOnline.serverTimestamp(),
+            [`${raizSequenciaOnline()}/jogadas/contestacoes/${c.alvo}/retomadaEm`]: preparacaoOnline.serverTimestamp(),
             [caminhoVotosOnline(c)]: null
         }));
     }
@@ -5353,10 +5590,12 @@
     function atualizarControlesJogadaOnline() {
         if (!preparacaoOnline || sorteioOnline?.fase !== 'aberta' || !sorteioCapturado) return;
         if (roundFinished) {
+            finishGameButton.disabled = !roundWinner || round !== config.cards || Boolean(placarFinalOnline) ||
+                roundWinner.id !== preparacaoOnline.uid || !sorteioConectado || finalizandoOnline || Boolean(preparacaoOnline.cancelando);
             stopButton.disabled = true;
             answerInput.disabled = true;
             answerSubmit.disabled = true;
-            $('back-button').disabled = !roomConfig.isHost || !sorteioConectado || jogadaEnviando || Boolean(preparacaoOnline.cancelando);
+            $('back-button').disabled = Boolean(placarFinalOnline) || finalizandoOnline || !roomConfig.isHost || !sorteioConectado || jogadaEnviando || Boolean(preparacaoOnline.cancelando);
             if (voltarResultadoOnline) voltarResultadoOnline.disabled = $('back-button').disabled;
             nextRoundButton.disabled = !roundWinner || round >= config.cards ||
                 pendingRoundTiebreak.length > 0 || roundWinner.id !== preparacaoOnline.uid ||
@@ -5373,12 +5612,14 @@
         answerInput.disabled = !responder;
         answerSubmit.disabled = !responder;
         updateContestButton();
-        $('back-button').disabled = !roomConfig.isHost || !sorteioConectado || jogadaEnviando || Boolean(preparacaoOnline.cancelando);
+        $('back-button').disabled = Boolean(placarFinalOnline) || finalizandoOnline || !roomConfig.isHost || !sorteioConectado || jogadaEnviando || Boolean(preparacaoOnline.cancelando);
     }
 
     function atualizarCronometroOnline() {
-        if (!preparacaoOnline || sorteioOnline?.fase !== 'aberta' || !sorteioCapturado) return;
-        if (roundFinished) return;
+        if (!preparacaoOnline || !sorteioCapturado || matchFinished) return;
+        if (resultadoFinalOnline) { abrirResultadoFinalOnline(); return; }
+        if (placarFinalOnline && !chaveDesempateOnline) { avancarFinalOnline(); return; }
+        if (sorteioOnline?.fase !== 'aberta' || roundFinished) return;
         if (contestacaoPendenteOnline()) {
             const c = contestacaoPendenteOnline();
             remainingTime = Math.max(0, Math.ceil((prazoTurnoOnline() - c.inicioEm) / 1000));
@@ -5428,6 +5669,26 @@
         }
     }
 
+    function registrarHistoricoSequenciaOnline(dados, carta, extra = false, tentativa = null) {
+        if (!carta) return;
+        for (const t of registrosRodadaOnline(dados)) {
+            const autor = players.find(p => p.vaga === t.vaga);
+            if (!autor) continue;
+            const rejeitada = dados?.contestacoes?.[t.numero]?.resultado?.rejeitada === true;
+            if (typeof t.resposta === 'string') {
+                const normalizada = config.mode === 'sem-call' ? normalizeAnswer(t.resposta) : null;
+                answerHistory.push({ id: answerHistory.length + 1, round, playerId: autor.id, playerName: autor.nickname,
+                    cardId: carta.id, theme: carta.tema, letter: t.letra, mode: config.mode,
+                    answer: config.mode === 'sem-call' ? t.resposta : null, normalizedAnswer: normalizada,
+                    status: rejeitada ? 'rejected' : 'accepted', contested: Boolean(dados?.contestacoes?.[t.numero]),
+                    isTiebreak: extra, tiebreakType: extra ? (tentativaDesempateOnline?.rodada === 0 ? 'final' : 'rodada') : null, tiebreakAttempt: tentativa });
+            }
+            if (t.expirou || rejeitada) eliminationHistory.push({ round, playerId: autor.id, playerName: autor.nickname,
+                reason: t.expirou ? 'tempo' : 'contestacao', letter: t.letra || null, theme: carta.tema,
+                isTiebreak: extra, tiebreakAttempt: tentativa, order: eliminationHistory.length + 1 });
+        }
+    }
+
     function aplicarJogadasOnline(dados, forcar = false) {
         if (!sorteioCapturado || sorteioOnline?.fase !== 'aberta' || preparacaoOnline.cancelando) return;
         if (roundFinished) return;
@@ -5439,14 +5700,9 @@
             .sort((a, b) => a.numero - b.numero);
         turnoAtualOnline = registros.at(-1) || null;
         const eliminados = new Set(Object.keys(dados?.eliminados || {}).map(Number));
-        players.forEach(p => { p.eliminated = eliminados.has(p.vaga); p.spectator = p.eliminated; });
+        players.forEach(p => { p.eliminated = eliminados.has(p.vaga) || Boolean(tentativaDesempateOnline && !tentativaDesempateOnline.participantes?.[p.vaga]); p.spectator = p.eliminated; });
+        if (tentativaDesempateOnline) ms.sincronizarOnline(tentativaDesempateOnline, players, BANCO_CARTAS);
         eliminationHistory.splice(0, eliminationHistory.length, ...eliminationHistory.filter(e => e.round < round));
-        registros.filter(t => t.expirou || dados?.contestacoes?.[t.numero]?.resultado?.rejeitada).forEach(t => {
-            const autor = players.find(p => p.vaga === t.vaga);
-            eliminationHistory.push({ round, playerId: autor.id, playerName: autor.nickname,
-                reason: t.expirou ? 'tempo' : 'contestacao', letter: t.letra || null, theme: currentCard.tema,
-                isTiebreak: false, tiebreakAttempt: null, order: eliminationHistory.length + 1 });
-        });
         const indice = players.findIndex(p => p.vaga === (turnoAtualOnline?.vaga || iniciadorOnline));
         if (indice < 0) {
             $('game-status').textContent = 'Turno inválido. Retorne ao lobby.';
@@ -5460,18 +5716,15 @@
         Object.keys(dados?.letras || {}).forEach(letra => usedLetters.add(letra));
         usedAnswers.clear();
         answerHistory.splice(0, answerHistory.length, ...answerHistory.filter(a => a.round < round));
-        registros.filter(t => typeof t.resposta === 'string').forEach(t => {
-            const autor = players.find(p => p.vaga === t.vaga);
-            const normalizada = config.mode === 'sem-call' ? normalizeAnswer(t.resposta) : null;
-            const rejeitada = dados?.contestacoes?.[t.numero]?.resultado?.rejeitada === true;
-            if (normalizada && !rejeitada) usedAnswers.add(normalizada);
-            answerHistory.push({ id: answerHistory.length + 1, round, playerId: autor.id, playerName: autor.nickname,
-                cardId: currentCard.id, theme: currentCard.tema, letter: t.letra, mode: config.mode,
-                answer: config.mode === 'sem-call' ? t.resposta : null, normalizedAnswer: normalizada,
-                status: rejeitada ? 'rejected' : 'accepted', contested: Boolean(dados?.contestacoes?.[t.numero]),
-                isTiebreak: false, tiebreakType: null, tiebreakAttempt: null });
+        const normal = rodadasOnline[round];
+        registrarHistoricoSequenciaOnline(normal?.jogadas, BANCO_CARTAS.find(c => c.id === normal?.sorteio?.cartaId));
+        Object.values(desempatesOnline).filter(d => d.rodada === (tentativaDesempateOnline?.rodada === 0 ? 0 : round)).sort((a,b) => a.numero-b.numero).forEach(d => {
+            registrarHistoricoSequenciaOnline(d.jogadas, BANCO_CARTAS.find(c => c.id === d.sorteio?.cartaId), true, d.numero);
         });
-        lastConfirmedAnswer = answerHistory.filter(a => a.round === round).at(-1) || null;
+        const respostasAtuais = answerHistory.filter(a => a.round === round && (tentativaDesempateOnline
+            ? a.isTiebreak && a.tiebreakAttempt === tentativaDesempateOnline.numero : !a.isTiebreak));
+        respostasAtuais.filter(a => a.status === 'accepted' && a.normalizedAnswer).forEach(a => usedAnswers.add(a.normalizedAnswer));
+        lastConfirmedAnswer = respostasAtuais.at(-1) || null;
         updatePlayerHits();
         sincronizarContestacaoOnline();
         if (terminouSequenciaOnline() && !contestacaoPendenteOnline() && !janelaFinalOnline()) {
@@ -5479,7 +5732,10 @@
             return;
         }
         const mudouSelecao = anterior?.numero !== turnoAtualOnline?.numero || anterior?.letra !== turnoAtualOnline?.letra;
-        if (mudouSelecao) resetAnswerInput();
+        if (mudouSelecao) {
+            resetAnswerInput();
+            if (chaveDesempateOnline && selectedLetter) ms.executarImpacto();
+        }
         $('selected-letter-box').hidden = !selectedLetter;
         $('selected-letter').textContent = selectedLetter || '—';
         if (selectedLetter) answerInput.placeholder = `Resposta com ${selectedLetter}...`;
@@ -5491,7 +5747,7 @@
         $('game-status').textContent = terminouSequenciaOnline()
             ? 'Última resposta: aguarde a janela de contestação.'
             : !turnoAtualOnline ? `${nome}, pressione STOP! para iniciar.`
-            : selectedLetter ? `${nome} escolheu ${selectedLetter}. ${config.mode === 'sem-call' ? 'Aguardando resposta.' : 'Confirme com STOP!.'}`
+            : selectedLetter ? `${chaveDesempateOnline ? 'Letra sorteada: ' + selectedLetter + '. Vez de ' + nome : nome + ' escolheu ' + selectedLetter}. ${config.mode === 'sem-call' ? 'Aguardando resposta.' : 'Confirme com STOP!.'}`
             : `${aviso}Agora é a vez de ${nome}. Escolha uma letra livre.`;
         atualizarCronometroOnline();
         atualizarControlesJogadaOnline();
@@ -5507,14 +5763,13 @@
         const rascunho = answerInput.value;
         if (acao === 'iniciar') {
             if (turnoAtualOnline || stopButton.disabled) return;
-            alteracoes['jogadas/turnos/1'] = { numero: 1, vaga: iniciadorOnline, anteriorVaga: 0, inicioEm: serverTimestamp() };
-            alteracoes['jogadas/atual'] = 1;
+            anexarTurnoOnline(alteracoes, 1, iniciadorOnline, 0);
         } else {
             if (!podeJogarOnline()) return;
             const t = turnoAtualOnline;
             const caminho = `jogadas/turnos/${t.numero}`;
             if (acao === 'letra') {
-                if (selectedLetter || usedLetters.has(letra) || !/^[A-Z]$/.test(letra || '')) return;
+                if (chaveDesempateOnline || selectedLetter || usedLetters.has(letra) || !/^[A-Z]$/.test(letra || '')) return;
                 alteracoes[`${caminho}/letra`] = letra;
                 alteracoes[`jogadas/letras/${letra}`] = t.numero;
             } else if (acao === 'resposta') {
@@ -5532,10 +5787,7 @@
                 alteracoes[`jogadas/acertos/${t.vaga}`] = (jogadasOnline?.acertos?.[t.vaga] || 0) + 1;
                 if (usedLetters.size < alphabet.length) {
                     const proximo = players[getNextPlayerIndex()];
-                    alteracoes['jogadas/atual'] = t.numero + 1;
-                    alteracoes[`jogadas/turnos/${t.numero + 1}`] = {
-                        numero: t.numero + 1, vaga: proximo.vaga, anteriorVaga: t.vaga, inicioEm: serverTimestamp()
-                    };
+                    anexarTurnoOnline(alteracoes, t.numero + 1, proximo.vaga, t.vaga);
                 } else {
                     alteracoes['jogadas/fim'] = t.numero;
                     alteracoes['jogadas/fimEm'] = serverTimestamp();
@@ -5574,11 +5826,7 @@
             [`jogadas/eliminados/${t.vaga}`]: t.numero };
         if (getActivePlayers().length > 2 && usedLetters.size < alphabet.length) {
             const proximo = players[getNextPlayerIndex()];
-            alteracoes['jogadas/atual'] = t.numero + 1;
-            alteracoes[`jogadas/turnos/${t.numero + 1}`] = {
-                numero: t.numero + 1, vaga: proximo.vaga, anteriorVaga: t.vaga,
-                inicioEm: serverTimestamp()
-            };
+            anexarTurnoOnline(alteracoes, t.numero + 1, proximo.vaga, t.vaga);
         } else {
             alteracoes['jogadas/fim'] = t.numero;
             alteracoes['jogadas/fimEm'] = serverTimestamp();
@@ -5599,16 +5847,25 @@
     }
 
     function concluirRodadaOnline() {
-        const ativos = getActivePlayers();
-        let vencedor = ativos.length === 1 ? ativos[0] : null;
-        let motivo = 'Restou apenas um jogador ativo.';
-        if (ativos.length > 1) {
-            const maior = Math.max(...ativos.map(p => p.roundHits));
-            const empatados = ativos.filter(p => p.roundHits === maior);
-            if (empatados.length === 1) vencedor = empatados[0];
-            else pendingRoundTiebreak = empatados.map(p => p.id);
-            motivo = vencedor ? 'Letras esgotadas. Vitória por acertos.' : 'Empate! Desempate online ainda indisponível.';
+        if (placarFinalOnline && !chaveDesempateOnline) { avancarFinalOnline(); return; }
+        const normal = rodadasOnline[round];
+        const chaveResolvida = normal?.desempate;
+        if (chaveDesempateOnline) {
+            const { lideres, maior } = lideresSequenciaOnline(jogadasOnline, tentativaDesempateOnline);
+            if (lideres.length === 1) registrarVencedorDesempateOnline(lideres[0]);
+            else if (lideres.length > 1) criarDesempateOnline(lideres, maior);
+            return;
         }
+        const { lideres } = lideresSequenciaOnline(jogadasOnline);
+        const vencedor = chaveResolvida
+            ? players.find(p => p.vaga === desempatesOnline[chaveResolvida]?.jogadas?.vencedor)
+            : lideres.length === 1 ? lideres[0] : null;
+        if (!vencedor) {
+            if (lideres.length > 1 && !chaveResolvida) criarDesempateOnline(lideres, Math.max(...lideres.map(p => jogadasOnline.acertos?.[p.vaga] || 0)));
+            return;
+        }
+        const motivo = chaveResolvida ? 'Vitória na morte súbita!'
+            : getActivePlayers().length === 1 ? 'Restou apenas um jogador ativo.' : 'Letras esgotadas. Vitória por acertos.';
         // O histórico compartilhado determina o resultado; não há incremento remoto duplicável.
         ajustarBaralhoOnline();
         finishRound(vencedor, motivo);
@@ -5623,7 +5880,12 @@
                 ? 'Você realizará o próximo sorteio.'
                 : `Aguardando ${vencedor.nickname} avançar para a próxima rodada.`;
         } else {
-            roundWinnerNext.textContent = 'Última rodada concluída. Resultado final online ainda indisponível.';
+            nextRoundButton.hidden = true;
+            finishGameButton.hidden = false;
+            finishGameButton.textContent = 'FINALIZAR PARTIDA →';
+            roundWinnerNext.textContent = vencedor.id === preparacaoOnline.uid
+                ? 'Confirme o resultado final da partida.'
+                : `Aguardando ${vencedor.nickname} confirmar o resultado final.`;
         }
         if (roomConfig.isHost && !voltarResultadoOnline) {
             voltarResultadoOnline = document.createElement('button');
@@ -5633,7 +5895,7 @@
             voltarResultadoOnline.addEventListener('click', () => $('back-button').click());
             roundWinnerNext.after(voltarResultadoOnline);
         }
-        if (voltarResultadoOnline) voltarResultadoOnline.hidden = false;
+        if (voltarResultadoOnline) voltarResultadoOnline.hidden = round === config.cards;
         atualizarControlesJogadaOnline();
     }
 
@@ -5643,7 +5905,7 @@
             !preparacaoOnline.cancelando;
         drawButton.disabled = !autorizado || Boolean(sorteioOnline);
         startRoundButton.disabled = !autorizado || sorteioOnline?.fase !== 'sorteada';
-        $('back-button').disabled = !roomConfig.isHost || !sorteioConectado || Boolean(preparacaoOnline.cancelando);
+        $('back-button').disabled = Boolean(placarFinalOnline) || finalizandoOnline || !roomConfig.isHost || !sorteioConectado || Boolean(preparacaoOnline.cancelando);
         if (voltarSorteio) voltarSorteio.disabled = $('back-button').disabled;
         atualizarControlesJogadaOnline();
     }
@@ -5655,7 +5917,11 @@
         if (fase === 'aberta' && (sorteioOnline?.fase !== 'sorteada' || startRoundButton.disabled)) return;
         const { set, update, referencia } = preparacaoOnline;
         const numero = round;
-        const livres = BANCO_CARTAS.filter(c => !cartasUsadasOnline[c.id]);
+        const temaOriginal = rodadasOnline[round]?.sorteio?.cartaId;
+        const temaAnterior = tentativaDesempateOnline?.numero > 1 ? desempatesOnline[`${tentativaDesempateOnline.rodada}-${tentativaDesempateOnline.numero - 1}`]?.sorteio?.cartaId : null;
+        const livres = chaveDesempateOnline
+            ? BANCO_CARTAS.filter(c => c.id !== temaOriginal && c.id !== temaAnterior)
+            : BANCO_CARTAS.filter(c => !cartasUsadasOnline[c.id]);
         if (fase === 'sorteada' && !livres.length) return;
         const cartaId = fase === 'sorteada'
             ? shuffleCards(livres)[0].id
@@ -5663,11 +5929,11 @@
         sorteioEnviando = true;
         atualizarBotoesSorteioOnline();
         try {
-            if (!rodadasOnline[numero]) {
+            if (!chaveDesempateOnline && !rodadasOnline[numero]) {
                 await set(referenciaRodadaOnline(numero), { numero, iniciador: iniciadorOnline });
             }
-            const alteracoes = { [`rodadas/${numero}/sorteio`]: { cartaId, fase } };
-            if (fase === 'sorteada') alteracoes[`cartasUsadas/${cartaId}`] = numero;
+            const alteracoes = { [`${caminhoSequenciaOnline()}/sorteio`]: { cartaId, fase } };
+            if (fase === 'sorteada' && !chaveDesempateOnline) alteracoes[`cartasUsadas/${cartaId}`] = numero;
             await update(referencia, alteracoes);
         } catch (erro) {
             console.error('[STOP!] Falha no sorteio online:', erro);
@@ -5781,6 +6047,7 @@
                 $('draw-status').after(voltarSorteio);
             }
             receberRodadasOnline(preparacaoOnline.sala, true);
+            if (matchFinished) return;
             const { database, ref, onValue, set, onDisconnect, referencia, uid } = preparacaoOnline;
             const presenca = ref(database, `salas/${config.roomCode}/jogadores/${uid}/conectado`);
             let geracaoPresenca = 0;
@@ -5793,7 +6060,7 @@
                     window.location.replace(`salas.html?modo=${encodeURIComponent(config.mode)}`);
                 } else if (sala.status === 'aguardando' && !preparacaoOnline.cancelando) {
                     window.location.replace('lobby.html');
-                } else if (sala.status === 'preparando') {
+                } else if (['preparando', 'encerrada'].includes(sala.status)) {
                     receberRodadasOnline(sala);
                 }
             }, erro => {
