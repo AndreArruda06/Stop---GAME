@@ -5017,31 +5017,42 @@
     let deslocamentoServidor = 0;
     let relogioOnlinePronto = false;
     let intervaloOnline = null;
+    let proximaTentativaExpiracao = 0;
+    let voltarResultadoOnline = null;
 
     function horarioServidorOnline() {
         return Date.now() + deslocamentoServidor;
     }
 
     function terminouSequenciaOnline() {
-        return Boolean(turnoAtualOnline && turnoAtualOnline.numero === 26 &&
-            typeof turnoAtualOnline.resposta === 'string');
+        return Boolean(turnoAtualOnline &&
+            (turnoAtualOnline.expirou === true || typeof turnoAtualOnline.resposta === 'string') &&
+            (getActivePlayers().length <= 1 || usedLetters.size >= alphabet.length));
     }
 
     function podeInteragirOnline() {
         return Boolean(preparacaoOnline && sorteioOnline?.fase === 'aberta' &&
             sorteioCapturado && sorteioConectado && relogioOnlinePronto &&
-            !jogadaEnviando && !sorteioEnviando && !preparacaoOnline.cancelando &&
+            !roundFinished && !jogadaEnviando && !sorteioEnviando && !preparacaoOnline.cancelando &&
             players[currentPlayerIndex]?.id === preparacaoOnline.uid);
     }
 
     function podeJogarOnline() {
         return podeInteragirOnline() && Boolean(turnoAtualOnline) &&
-            typeof turnoAtualOnline.resposta !== 'string' &&
+            turnoAtualOnline.expirou !== true && typeof turnoAtualOnline.resposta !== 'string' &&
             horarioServidorOnline() < turnoAtualOnline.inicioEm + config.time * 1000;
     }
 
     function atualizarControlesJogadaOnline() {
         if (!preparacaoOnline || sorteioOnline?.fase !== 'aberta' || !sorteioCapturado) return;
+        if (roundFinished) {
+            stopButton.disabled = true;
+            answerInput.disabled = true;
+            answerSubmit.disabled = true;
+            $('back-button').disabled = !roomConfig.isHost || !sorteioConectado || jogadaEnviando || Boolean(preparacaoOnline.cancelando);
+            if (voltarResultadoOnline) voltarResultadoOnline.disabled = $('back-button').disabled;
+            return;
+        }
         const autorizado = podeJogarOnline();
         stopButton.disabled = turnoAtualOnline ? !autorizado : !podeInteragirOnline();
         $('stop-label').textContent = terminouSequenciaOnline() ? 'AGUARDE' :
@@ -5056,6 +5067,7 @@
 
     function atualizarCronometroOnline() {
         if (!preparacaoOnline || sorteioOnline?.fase !== 'aberta' || !sorteioCapturado) return;
+        if (roundFinished) return;
         const expiradoAntes = timeExpired;
         const tempoAntes = remainingTime;
         const rodandoAntes = timerRunning;
@@ -5080,13 +5092,15 @@
             atualizarControlesJogadaOnline();
         }
         if (timeExpired) {
-            const aviso = `Tempo de ${getCurrentPlayer().nickname} esgotado! Eliminação online será integrada na próxima etapa.`;
+            const aviso = `Tempo de ${getCurrentPlayer().nickname} esgotado! Confirmando eliminação...`;
             if ($('game-status').textContent !== aviso) $('game-status').textContent = aviso;
+            registrarExpiracaoOnline();
         }
     }
 
     function aplicarJogadasOnline(dados, forcar = false) {
         if (!sorteioCapturado || sorteioOnline?.fase !== 'aberta' || preparacaoOnline.cancelando) return;
+        if (roundFinished) return;
         const assinatura = JSON.stringify(dados || null);
         if (!forcar && assinatura === assinaturaJogadasOnline) return;
         assinaturaJogadasOnline = assinatura;
@@ -5094,6 +5108,8 @@
         const registros = Object.values(dados?.turnos || {}).filter(Boolean)
             .sort((a, b) => a.numero - b.numero);
         turnoAtualOnline = registros.at(-1) || null;
+        const eliminados = new Set(registros.filter(t => t.expirou === true).map(t => t.vaga));
+        players.forEach(p => { p.eliminated = eliminados.has(p.vaga); p.spectator = p.eliminated; });
         const indice = turnoAtualOnline ? players.findIndex(p => p.vaga === turnoAtualOnline.vaga) : 0;
         if (indice < 0) {
             $('game-status').textContent = 'Turno inválido. Retorne ao lobby.';
@@ -5101,7 +5117,7 @@
         }
         currentPlayerIndex = indice;
         roundStarted = Boolean(turnoAtualOnline);
-        selectedLetter = turnoAtualOnline && typeof turnoAtualOnline.resposta !== 'string'
+        selectedLetter = turnoAtualOnline && turnoAtualOnline.expirou !== true && typeof turnoAtualOnline.resposta !== 'string'
             ? turnoAtualOnline.letra || null : null;
         usedLetters.clear();
         Object.keys(dados?.letras || {}).forEach(letra => usedLetters.add(letra));
@@ -5118,6 +5134,10 @@
         });
         lastConfirmedAnswer = answerHistory.at(-1) || null;
         updatePlayerHits();
+        if (terminouSequenciaOnline()) {
+            if (!jogadaEnviando) concluirRodadaOnline();
+            return;
+        }
         const mudouSelecao = anterior?.numero !== turnoAtualOnline?.numero || anterior?.letra !== turnoAtualOnline?.letra;
         if (mudouSelecao || terminouSequenciaOnline()) resetAnswerInput();
         $('selected-letter-box').hidden = !selectedLetter;
@@ -5167,8 +5187,8 @@
                     resposta = validacao.answer;
                 }
                 alteracoes[`${caminho}/resposta`] = resposta;
-                if (t.numero < 26) {
-                    const proximo = players[(currentPlayerIndex + 1) % players.length];
+                if (usedLetters.size < alphabet.length) {
+                    const proximo = players[getNextPlayerIndex()];
                     alteracoes[`jogadas/turnos/${t.numero + 1}`] = {
                         numero: t.numero + 1, vaga: proximo.vaga, anteriorVaga: t.vaga, inicioEm: serverTimestamp()
                     };
@@ -5185,12 +5205,75 @@
             $('game-status').textContent = 'Jogada não confirmada pelo servidor. Verifique a conexão e o tempo.';
         } finally {
             jogadaEnviando = false;
+            aplicarJogadasOnline(jogadasOnline, true);
             atualizarCronometroOnline();
             atualizarControlesJogadaOnline();
             if (!answerInput.disabled && acao === 'letra') answerInput.focus({ preventScroll: true });
         }
     }
 
+
+    // Registra o estouro e, quando necessário, o próximo turno atomicamente.
+    async function registrarExpiracaoOnline() {
+        const t = turnoAtualOnline;
+        if (!t || roundFinished || jogadaEnviando || !sorteioConectado ||
+            !relogioOnlinePronto || preparacaoOnline.cancelando || t.expirou ||
+            typeof t.resposta === 'string' || Date.now() < proximaTentativaExpiracao ||
+            horarioServidorOnline() < t.inicioEm + config.time * 1000) return;
+        // Qualquer participante conectado pode confirmar um prazo vencido.
+        const { update, referencia, serverTimestamp } = preparacaoOnline;
+        const alteracoes = { [`jogadas/turnos/${t.numero}/expirou`]: true,
+            [`jogadas/eliminados/${t.vaga}`]: t.numero };
+        if (getActivePlayers().length > 2 && usedLetters.size < alphabet.length) {
+            const proximo = players[getNextPlayerIndex()];
+            alteracoes[`jogadas/turnos/${t.numero + 1}`] = {
+                numero: t.numero + 1, vaga: proximo.vaga, anteriorVaga: t.vaga,
+                inicioEm: serverTimestamp()
+            };
+        }
+        jogadaEnviando = true;
+        proximaTentativaExpiracao = Date.now() + 1500;
+        atualizarControlesJogadaOnline();
+        try {
+            await update(referencia, alteracoes);
+        } catch (erro) {
+            // Outro navegador pode ter confirmado o mesmo estouro primeiro.
+            console.debug('[STOP!] Confirmação de prazo:', erro.code);
+        } finally {
+            jogadaEnviando = false;
+            aplicarJogadasOnline(jogadasOnline, true);
+            atualizarControlesJogadaOnline();
+        }
+    }
+
+    function concluirRodadaOnline() {
+        const ativos = getActivePlayers();
+        let vencedor = ativos.length === 1 ? ativos[0] : null;
+        let motivo = 'Restou apenas um jogador ativo.';
+        if (ativos.length > 1) {
+            const maior = Math.max(...ativos.map(p => p.roundHits));
+            const empatados = ativos.filter(p => p.roundHits === maior);
+            if (empatados.length === 1) vencedor = empatados[0];
+            else pendingRoundTiebreak = empatados.map(p => p.id);
+            motivo = vencedor ? 'Letras esgotadas. Vitória por acertos.' : 'Empate! Desempate online ainda indisponível.';
+        }
+        // O histórico compartilhado determina o resultado; não há incremento remoto duplicável.
+        const restantes = Math.max(0, config.cards - 1);
+        matchDeck.splice(restantes);
+        finishRound(vencedor, motivo);
+        nextRoundButton.disabled = true;
+        finishGameButton.disabled = true;
+        roundWinnerNext.textContent = 'Próximas rodadas e resultado final online ainda em desenvolvimento.';
+        if (roomConfig.isHost && !voltarResultadoOnline) {
+            voltarResultadoOnline = document.createElement('button');
+            voltarResultadoOnline.type = 'button';
+            voltarResultadoOnline.className = 'primary-button';
+            voltarResultadoOnline.textContent = 'VOLTAR AO LOBBY';
+            voltarResultadoOnline.addEventListener('click', () => $('back-button').click());
+            roundWinnerNext.after(voltarResultadoOnline);
+        }
+        atualizarControlesJogadaOnline();
+    }
 
     function atualizarBotoesSorteioOnline() {
         const autorizado = roomConfig.isHost && sorteioConectado &&
