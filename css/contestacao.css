@@ -1,0 +1,811 @@
+/* ========================================
+   SISTEMA DE CONTESTAÇÃO - STOP!
+   ======================================== */
+
+.contestacao-overlay[hidden],
+.contestacao-trigger[hidden],
+.contestacao-result[hidden],
+.contestacao-voting[hidden],
+.contestacao-waiting[hidden] {
+    display: none !important;
+}
+
+/* ========================================
+   BOTÃO DE CONTESTAÇÃO
+   ======================================== */
+
+.contestacao-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    width: 100%;
+    min-height: 44px;
+    padding: 12px 16px;
+
+    background: #f5473e;
+    color: #ffffff;
+
+    border: 2px solid #a9272c;
+    border-radius: 14px;
+
+    box-shadow: 0 4px 0 #a9272c;
+
+    font-family: 'Fredoka', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+
+    cursor: pointer;
+
+    transition:
+        transform 150ms ease,
+        box-shadow 150ms ease,
+        background 150ms ease;
+}
+
+.contestacao-trigger:hover:not(:disabled) {
+    background: #df3935;
+    transform: translateY(-2px);
+}
+
+.contestacao-trigger:active:not(:disabled) {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 #a9272c;
+}
+
+.contestacao-trigger:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.contestacao-trigger-icon {
+    font-size: 19px;
+}
+
+/* ========================================
+   FUNDO DA VOTAÇÃO
+   ======================================== */
+
+.contestacao-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 24px;
+
+    background: rgba(9, 35, 65, 0.88);
+
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+/* ========================================
+   PAINEL PRINCIPAL
+   ======================================== */
+
+.contestacao-panel {
+    position: relative;
+
+    width: min(100%, 580px);
+
+    margin: auto;
+    padding: 32px;
+
+    background: #1065a7;
+    color: #fff7df;
+
+    border: 4px solid #fff7df;
+    border-radius: 28px;
+
+    box-shadow: 0 8px 0 #083c70;
+
+    text-align: center;
+
+    font-family: 'Nunito', sans-serif;
+
+    animation: contestacaoEntrada 250ms ease-out;
+}
+
+/* ========================================
+   CABEÇALHO
+   ======================================== */
+
+.contestacao-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    padding: 8px 15px;
+    margin-bottom: 18px;
+
+    background: #f5473e;
+    color: #ffffff;
+
+    border: 2px solid #a9272c;
+    border-radius: 30px;
+
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 1.2px;
+}
+
+.contestacao-icon {
+    display: block;
+
+    margin-bottom: 8px;
+
+    font-size: 50px;
+    line-height: 1.2;
+}
+
+.contestacao-title {
+    margin: 0 0 10px;
+
+    color: #fff7df;
+
+    font-family: 'Fredoka', sans-serif;
+    font-size: clamp(28px, 5vw, 46px);
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.contestacao-description {
+    max-width: 420px;
+    margin: 0 auto 20px;
+
+    color: #dcefff;
+
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+/* ========================================
+   CRONÔMETRO DA VOTAÇÃO
+   ======================================== */
+
+.contestacao-timer {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-width: 118px;
+
+    padding: 8px 20px;
+    margin-bottom: 20px;
+
+    background: #083c70;
+    color: #ffda28;
+
+    border: 2px solid #8ac8ed;
+    border-radius: 18px;
+
+    font-family: 'Fredoka', sans-serif;
+    font-size: 40px;
+    font-weight: 700;
+
+    font-variant-numeric: tabular-nums;
+}
+
+.contestacao-timer.is-critical {
+    background: #a9272c;
+    color: #ffffff;
+    border-color: #f5473e;
+}
+
+/* ========================================
+   RESPOSTA CONTESTADA
+   ======================================== */
+
+.contestacao-answer-card {
+    margin-bottom: 22px;
+    padding: 20px;
+
+    background: #fff7df;
+    color: #083c70;
+
+    border-radius: 18px;
+
+    box-shadow: 0 5px 0 #083c70;
+}
+
+.contestacao-answer-label {
+    display: block;
+
+    margin-bottom: 10px;
+
+    color: #1065a7;
+
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 1.2px;
+}
+
+.contestacao-author {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+
+    margin-bottom: 16px;
+}
+
+.contestacao-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 38px;
+    height: 38px;
+
+    background: #1065a7;
+    color: #ffffff;
+
+    border: 2px solid #083c70;
+    border-radius: 50%;
+
+    font-family: 'Fredoka', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.contestacao-author-name {
+    font-size: 18px;
+    font-weight: 900;
+
+    overflow-wrap: anywhere;
+}
+
+/* ========================================
+   TEMA E LETRA
+   ======================================== */
+
+.contestacao-theme-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+
+    margin-bottom: 14px;
+}
+
+.contestacao-theme {
+    padding: 7px 12px;
+
+    background: #dcefff;
+    color: #083c70;
+
+    border-radius: 10px;
+
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.contestacao-letter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-width: 40px;
+    height: 40px;
+
+    background: #ffda28;
+    color: #083c70;
+
+    border: 2px solid #d7ad14;
+    border-radius: 10px;
+
+    font-family: 'Fredoka', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+/* ========================================
+   TEXTO DA RESPOSTA
+   ======================================== */
+
+.contestacao-answer {
+    margin: 0;
+
+    color: #083c70;
+
+    font-family: 'Fredoka', sans-serif;
+    font-size: clamp(24px, 5vw, 34px);
+    font-weight: 600;
+
+    overflow-wrap: anywhere;
+}
+
+/* Modo COM CALL */
+
+.contestacao-answer.is-voice {
+    font-family: 'Nunito', sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.5;
+}
+
+/* ========================================
+   IDENTIFICAÇÃO DO VOTANTE
+   ======================================== */
+
+.contestacao-voter {
+    margin: 0 0 14px;
+
+    color: #ffda28;
+
+    font-size: 14px;
+    font-weight: 900;
+}
+
+/* ========================================
+   BOTÕES DA VOTAÇÃO
+   ======================================== */
+
+.contestacao-vote-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+
+    margin-bottom: 18px;
+}
+
+.contestacao-vote-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+
+    min-height: 110px;
+    padding: 16px 10px;
+
+    color: #ffffff;
+
+    border: 3px solid;
+    border-radius: 18px;
+
+    font-family: 'Fredoka', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        transform 150ms ease,
+        box-shadow 150ms ease,
+        opacity 150ms ease;
+}
+
+.contestacao-vote-button:hover:not(:disabled) {
+    transform: translateY(-3px);
+}
+
+.contestacao-vote-button:active:not(:disabled) {
+    transform: translateY(4px);
+    box-shadow: none;
+}
+
+.contestacao-vote-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Voto válido */
+
+.contestacao-vote-valid {
+    background: #27965b;
+    border-color: #16663d;
+    box-shadow: 0 5px 0 #16663d;
+}
+
+/* Voto inválido */
+
+.contestacao-vote-invalid {
+    background: #f5473e;
+    border-color: #a9272c;
+    box-shadow: 0 5px 0 #a9272c;
+}
+
+.contestacao-vote-icon {
+    display: block;
+
+    font-size: 34px;
+    line-height: 1;
+}
+
+/* ========================================
+   PROGRESSO DA VOTAÇÃO
+   ======================================== */
+
+.contestacao-progress {
+    margin-top: 18px;
+}
+
+.contestacao-progress-text {
+    margin-bottom: 8px;
+
+    color: #dcefff;
+
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.contestacao-progress-track {
+    height: 8px;
+
+    background: #083c70;
+
+    border-radius: 20px;
+
+    overflow: hidden;
+}
+
+.contestacao-progress-fill {
+    width: 0;
+    height: 100%;
+
+    background: #ffda28;
+
+    border-radius: 20px;
+
+    transition: width 200ms ease;
+}
+
+/* ========================================
+   PRIVACIDADE DOS VOTOS
+   ======================================== */
+
+.contestacao-privacy {
+    margin: 14px 0 0;
+
+    color: #b8dff6;
+
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* ========================================
+   AGUARDANDO OS DEMAIS JOGADORES
+   ======================================== */
+
+.contestacao-waiting {
+    padding: 24px 16px;
+
+    background: #083c70;
+
+    border: 2px solid #438bc1;
+    border-radius: 18px;
+}
+
+.contestacao-waiting-icon {
+    display: block;
+
+    margin-bottom: 12px;
+
+    font-size: 36px;
+}
+
+.contestacao-waiting-title {
+    margin: 0 0 8px;
+
+    color: #ffda28;
+
+    font-family: 'Fredoka', sans-serif;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.contestacao-waiting-text {
+    margin: 0;
+
+    color: #dcefff;
+
+    font-size: 14px;
+    font-weight: 700;
+}
+
+/* ========================================
+   RESULTADO DA CONTESTAÇÃO
+   ======================================== */
+
+.contestacao-result {
+    padding: 12px 0 0;
+
+    animation: contestacaoEntrada 250ms ease-out;
+}
+
+.contestacao-result-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 84px;
+    height: 84px;
+
+    margin: 0 auto 18px;
+
+    background: #27965b;
+    color: #ffffff;
+
+    border: 4px solid #ffffff;
+    border-radius: 50%;
+
+    font-size: 42px;
+}
+
+.contestacao-result.is-rejected
+.contestacao-result-icon {
+    background: #f5473e;
+}
+
+.contestacao-result-title {
+    margin: 0 0 10px;
+
+    color: #ffda28;
+
+    font-family: 'Fredoka', sans-serif;
+    font-size: clamp(28px, 5vw, 40px);
+    font-weight: 700;
+}
+
+.contestacao-result-message {
+    margin: 0 auto 20px;
+
+    max-width: 420px;
+
+    color: #fff7df;
+
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.5;
+}
+
+/* ========================================
+   TOTALIZAÇÃO DOS VOTOS
+   ======================================== */
+
+.contestacao-result-counts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+
+    margin-bottom: 20px;
+}
+
+.contestacao-result-count {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+
+    padding: 16px;
+
+    background: #083c70;
+
+    border: 2px solid #438bc1;
+    border-radius: 16px;
+}
+
+.contestacao-result-count strong {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+}
+
+.contestacao-count-valid strong {
+    color: #81e9a9;
+}
+
+.contestacao-count-invalid strong {
+    color: #ff938e;
+}
+
+.contestacao-result-count span {
+    color: #dcefff;
+
+    font-size: 12px;
+    font-weight: 900;
+}
+
+/* ========================================
+   CONTINUAR PARTIDA
+   ======================================== */
+
+.contestacao-continue {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 100%;
+    min-height: 54px;
+
+    padding: 14px 20px;
+
+    background: #ffda28;
+    color: #083c70;
+
+    border: 3px solid #d7ad14;
+    border-radius: 14px;
+
+    box-shadow: 0 5px 0 #d7ad14;
+
+    font-family: 'Fredoka', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+        transform 150ms ease,
+        box-shadow 150ms ease;
+}
+
+.contestacao-continue:hover:not(:disabled) {
+    transform: translateY(-2px);
+}
+
+.contestacao-continue:active:not(:disabled) {
+    transform: translateY(4px);
+    box-shadow: none;
+}
+
+.contestacao-continue:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* ========================================
+   CONTESTAÇÃO DURANTE A MORTE SÚBITA
+   ======================================== */
+
+body.morte-subita-ativa .contestacao-panel {
+    background: #68151d;
+
+    border-color: #fff7df;
+
+    box-shadow: 0 8px 0 #3d0c12;
+}
+
+body.morte-subita-ativa .contestacao-timer,
+body.morte-subita-ativa .contestacao-waiting,
+body.morte-subita-ativa .contestacao-result-count {
+    background: #3d0c12;
+    border-color: #a9272c;
+}
+
+body.morte-subita-ativa .contestacao-progress-track {
+    background: #3d0c12;
+}
+
+/* ========================================
+   ACESSIBILIDADE
+   ======================================== */
+
+.contestacao-trigger:focus-visible,
+.contestacao-vote-button:focus-visible,
+.contestacao-continue:focus-visible {
+    outline: 3px solid #ffffff;
+    outline-offset: 4px;
+}
+
+/* ========================================
+   ANIMAÇÃO LEVE DE ENTRADA
+   ======================================== */
+
+@keyframes contestacaoEntrada {
+
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+}
+
+/* ========================================
+   RESPONSIVIDADE
+   ======================================== */
+
+@media (max-width: 600px) {
+
+    .contestacao-overlay {
+        padding: 14px;
+    }
+
+    .contestacao-panel {
+        padding: 22px 16px;
+
+        border-width: 3px;
+        border-radius: 22px;
+    }
+
+    .contestacao-icon {
+        font-size: 38px;
+    }
+
+    .contestacao-answer-card {
+        padding: 16px;
+    }
+
+    .contestacao-timer {
+        font-size: 32px;
+    }
+
+    .contestacao-vote-buttons {
+        gap: 10px;
+    }
+
+    .contestacao-vote-button {
+        min-height: 90px;
+        font-size: 17px;
+    }
+
+    .contestacao-vote-icon {
+        font-size: 28px;
+    }
+
+}
+
+@media (max-height: 700px) {
+
+    .contestacao-panel {
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }
+
+    .contestacao-icon {
+        font-size: 32px;
+    }
+
+    .contestacao-eyebrow {
+        margin-bottom: 10px;
+    }
+
+    .contestacao-timer {
+        margin-bottom: 12px;
+    }
+
+    .contestacao-answer-card {
+        margin-bottom: 16px;
+    }
+
+}
+
+/* ========================================
+   MOVIMENTO REDUZIDO
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .contestacao-panel,
+    .contestacao-result {
+        animation: none;
+    }
+
+    .contestacao-trigger,
+    .contestacao-vote-button,
+    .contestacao-continue,
+    .contestacao-progress-fill {
+        transition: none;
+    }
+
+}

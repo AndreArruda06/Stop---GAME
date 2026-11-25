@@ -14,6 +14,9 @@
     <!-- Estilização exclusiva da morte súbita -->
     <link rel="stylesheet" href="css/morte-subita.css">
 
+    <!-- Estilização exclusiva da contestação -->
+    <link rel="stylesheet" href="css/contestacao.css">
+
     <!-- Biblioteca para captura da tela -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
@@ -355,7 +358,7 @@
 
                         <button type="button"
                             id="contest-button"
-                            class="contest-button"
+                            class="contest-button contestacao-trigger"
                             disabled>
 
                             CONTESTAR RESPOSTA
@@ -637,72 +640,155 @@
     </section>
 
     <!-- Sobreposição de contestação -->
-    <section id="contest-overlay"
-        class="modal-overlay"
+    <section id="contestacao-overlay"
+        class="contestacao-overlay"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="contest-title"
+        aria-labelledby="contestacao-title"
+        aria-describedby="contestacao-description"
+        tabindex="-1"
         hidden>
 
-        <div class="contest-modal">
+        <div class="contestacao-panel">
 
-            <span class="eyebrow">
-                AVALIAÇÃO DA RESPOSTA
+            <span class="contestacao-eyebrow">
+                RESPOSTA CONTESTADA
             </span>
 
-            <h2 id="contest-title">
-                A resposta é válida?
+            <span class="contestacao-icon" aria-hidden="true">
+                ⚖️
+            </span>
+
+            <h2 id="contestacao-title" class="contestacao-title">
+                Essa resposta vale?
             </h2>
 
-            <div class="contest-information">
-
-                <p>
-                    Jogador:
-                    <strong id="contest-player">—</strong>
-                </p>
-
-                <p>
-                    Tema:
-                    <strong id="contest-theme">—</strong>
-                </p>
-
-                <p>
-                    Letra:
-                    <strong id="contest-letter">—</strong>
-                </p>
-
-                <p id="contest-answer-row">
-                    Resposta:
-                    <strong id="contest-answer">—</strong>
-                </p>
-
-            </div>
-
-            <div class="vote-actions">
-
-                <button type="button"
-                    id="accept-vote"
-                    class="accept-vote"
-                    disabled>
-
-                    ✓ ACEITAR
-
-                </button>
-
-                <button type="button"
-                    id="reject-vote"
-                    class="reject-vote"
-                    disabled>
-
-                    ✕ REJEITAR
-
-                </button>
-
-            </div>
-
-            <p id="vote-status" role="status">
-                Aguardando votação...
+            <p id="contestacao-description" class="contestacao-description">
+                Os jogadores decidirão se a resposta é válida.
             </p>
+
+            <div id="contestacao-timer" class="contestacao-timer"
+                role="timer" aria-label="Tempo restante da votação">
+                00:10
+            </div>
+
+            <!-- Informações da resposta contestada -->
+            <div class="contestacao-answer-card">
+
+                <span class="contestacao-answer-label">
+                    RESPOSTA EM AVALIAÇÃO
+                </span>
+
+                <div class="contestacao-author">
+                    <span id="contestacao-avatar" class="contestacao-avatar"
+                        aria-hidden="true">?</span>
+                    <strong id="contestacao-author-name"
+                        class="contestacao-author-name">—</strong>
+                </div>
+
+                <div class="contestacao-theme-row">
+                    <span id="contestacao-theme" class="contestacao-theme">—</span>
+                    <span id="contestacao-letter" class="contestacao-letter">—</span>
+                </div>
+
+                <p id="contestacao-answer" class="contestacao-answer">—</p>
+
+            </div>
+
+            <!-- Votação manual nos dois modos de jogo -->
+            <div id="contestacao-voting" class="contestacao-voting" hidden>
+
+                <p id="contestacao-voter" class="contestacao-voter">
+                    Registre seu voto secreto.
+                </p>
+
+                <div class="contestacao-vote-buttons">
+
+                    <button type="button" id="contestacao-vote-valid"
+                        class="contestacao-vote-button contestacao-vote-valid"
+                        disabled>
+                        <span class="contestacao-vote-icon" aria-hidden="true">✓</span>
+                        VÁLIDA
+                    </button>
+
+                    <button type="button" id="contestacao-vote-invalid"
+                        class="contestacao-vote-button contestacao-vote-invalid"
+                        disabled>
+                        <span class="contestacao-vote-icon" aria-hidden="true">✕</span>
+                        INVÁLIDA
+                    </button>
+
+                </div>
+
+                <p class="contestacao-privacy">Seu voto é secreto.</p>
+
+            </div>
+
+            <!-- Autor da resposta e jogadores que já votaram -->
+            <div id="contestacao-waiting" class="contestacao-waiting" hidden>
+
+                <span class="contestacao-waiting-icon" aria-hidden="true">⏳</span>
+
+                <h3 id="contestacao-waiting-title" class="contestacao-waiting-title">
+                    Aguardando os jogadores...
+                </h3>
+
+                <p id="contestacao-waiting-text" class="contestacao-waiting-text">
+                    Aguarde o resultado da votação.
+                </p>
+
+            </div>
+
+            <!-- Progresso sem revelar votos individuais -->
+            <div id="contestacao-progress" class="contestacao-progress">
+
+                <p id="contestacao-progress-text" class="contestacao-progress-text"
+                    role="status">0 jogadores votaram</p>
+
+                <div class="contestacao-progress-track" aria-hidden="true">
+                    <div id="contestacao-progress-fill"
+                        class="contestacao-progress-fill"></div>
+                </div>
+
+            </div>
+
+            <!-- Resultado da votação -->
+            <div id="contestacao-result" class="contestacao-result" hidden>
+
+                <div id="contestacao-result-icon" class="contestacao-result-icon"
+                    aria-hidden="true">✓</div>
+
+                <h3 id="contestacao-result-title" class="contestacao-result-title">
+                    RESPOSTA ACEITA!
+                </h3>
+
+                <p id="contestacao-result-message" class="contestacao-result-message"
+                    role="status"></p>
+
+                <div class="contestacao-result-counts">
+
+                    <div class="contestacao-result-count contestacao-count-valid">
+                        <strong id="contestacao-count-valid">0</strong>
+                        <span>VOTOS VÁLIDA</span>
+                    </div>
+
+                    <div class="contestacao-result-count contestacao-count-invalid">
+                        <strong id="contestacao-count-invalid">0</strong>
+                        <span>VOTOS INVÁLIDA</span>
+                    </div>
+
+                </div>
+
+                <p id="contestacao-count-abstentions" class="contestacao-privacy">
+                    0 abstenção(ões)
+                </p>
+
+                <button type="button" id="contestacao-continue"
+                    class="contestacao-continue" disabled>
+                    CONTINUAR PARTIDA →
+                </button>
+
+            </div>
 
         </div>
 
@@ -927,6 +1013,9 @@
 
     <!-- Módulo independente da morte súbita -->
     <script src="js/morte-subita.js"></script>
+
+    <!-- Módulo independente da contestação -->
+    <script src="js/contestacao.js"></script>
 
     <!-- Lógica principal da partida -->
     <script src="js/jogo.js"></script>

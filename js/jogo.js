@@ -58,6 +58,8 @@
 
     const msStartButton = $('ms-start-button');
 
+    const contestButton = $('contest-button');
+
     // ========================================
     // CAPTURA ESTÁTICA DO FUNDO
     // ========================================
@@ -416,6 +418,18 @@
     let lastConfirmedAnswer = null;
 
     // ========================================
+    // INTEGRAÇÃO DA CONTESTAÇÃO
+    // ========================================
+
+    const contestacao = window.Contestacao;
+
+    const inContest = () => Boolean(contestacao && contestacao.estaAtiva());
+
+    let finalContestWindow = false;
+
+    let pausedContestTurn = null;
+
+    // ========================================
     // ESTADO DO CRONÔMETRO
     // ========================================
 
@@ -495,6 +509,10 @@
         finishGameButton.hidden = true;
 
         resetRoundWinnerInterface();
+
+        if (contestacao) contestacao.resetar();
+
+        updateContestButton();
 
         updateRound();
 
@@ -611,6 +629,8 @@
 
     function selectLetter(letter) {
 
+        if (inContest() || finalContestWindow) return;
+
         // Na morte súbita, somente o sistema escolhe a letra.
 
         if (inTiebreak()) return;
@@ -694,6 +714,8 @@
             );
 
             button.disabled =
+                inContest() ||
+                finalContestWindow ||
                 inTiebreak() ||
                 !roundStarted ||
                 roundFinished ||
@@ -743,6 +765,8 @@
     // ========================================
 
     function enableAnswerInput() {
+
+        if (inContest() || finalContestWindow) return;
 
         if (config.mode !== 'sem-call') return;
 
@@ -1159,6 +1183,8 @@
 
     function confirmAnswer() {
 
+        if (inContest() || finalContestWindow) return;
+
         if (!currentCard || !roundStarted) return;
 
         if (roundFinished || matchFinished) return;
@@ -1251,6 +1277,10 @@
 
         // Passa automaticamente a vez.
 
+        // A última resposta também pode ser contestada antes da premiação.
+
+        if (usedLetters.size >= alphabet.length && openFinalContestWindow()) return;
+
         advanceTurn(confirmationMessage);
 
     }
@@ -1297,7 +1327,7 @@
     // ELIMINAR JOGADOR DA RODADA
     // ========================================
 
-    function eliminatePlayer(playerIndex, reason) {
+    function eliminatePlayer(playerIndex, reason, letter = selectedLetter) {
 
         const player =
             players[playerIndex];
@@ -1328,7 +1358,7 @@
 
             reason: reason,
 
-            letter: selectedLetter,
+            letter: letter,
 
             theme: currentCard
                 ? currentCard.tema
@@ -2004,6 +2034,8 @@
 
     function finishRound(winner, reason) {
 
+        clearContestOpportunity();
+
         // Impede múltiplos encerramentos.
 
         if (roundFinished || matchFinished) return;
@@ -2645,6 +2677,8 @@
 
         timerDeadline = 0;
 
+        updateContestButton();
+
         if (inTiebreak()) {
 
             ms.atualizarEfeitosTempo(remainingTime, false);
@@ -2702,6 +2736,8 @@
 
         }, 100);
 
+        updateContestButton();
+
     }
 
     // ========================================
@@ -2749,6 +2785,8 @@
 
     function validateTimer() {
 
+        if (inContest() || finalContestWindow) return false;
+
         if (roundFinished || matchFinished) return false;
 
         if (timeExpired) return false;
@@ -2776,11 +2814,25 @@
 
     function handleTimeExpired() {
 
+        if (inContest()) return;
+
         if (timeExpired) return;
 
         if (roundFinished || matchFinished) return;
 
         if (!roundStarted) return;
+
+        // O prazo de contestação final não elimina ninguém por tempo.
+
+        if (finalContestWindow) {
+
+            closeFinalContestWindow();
+
+            return;
+
+        }
+
+        clearContestOpportunity();
 
         timeExpired = true;
 
@@ -2913,6 +2965,8 @@
     // ========================================
 
     function resetWheel() {
+
+        clearContestOpportunity();
 
         // Libera novamente todas as letras.
 
@@ -3505,6 +3559,8 @@
 
     function handleStop() {
 
+        if (inContest() || finalContestWindow) return;
+
         if (!currentCard) return;
 
         if (roundFinished || matchFinished) return;
@@ -3819,6 +3875,8 @@
 
             tiebreaks: tiebreakHistory,
 
+            contestacoes: contestacao ? contestacao.obterHistorico() : [],
+
             decidedByTiebreak: Boolean(finalChampion),
 
             modoTeste: modoTeste
@@ -3950,6 +4008,8 @@
     // Interrompe a partida enquanto a introdução estiver visível.
 
     function pauseForTiebreak() {
+
+        clearContestOpportunity();
 
         if (ms) ms.cancelarSorteioLetra();
 
@@ -4329,6 +4389,359 @@
     }
 
     // ========================================
+    // CONTROLE DA CONTESTAÇÃO NA PARTIDA
+    // ========================================
+
+    function getContestadorId() {
+
+        if (!contestacao || !lastConfirmedAnswer) return null;
+
+        if (!roundStarted || roundFinished || matchFinished ||
+            isPreparingNextRound || inContest()) return null;
+
+        // O teste local controla todos os jogadores. Na futura sala online,
+        // somente a identidade do jogador local poderá iniciar a votação.
+        // Espectadores também são elegíveis: o módulo recebe todos da sala.
+
+        if (modoTeste) {
+
+            const current = getCurrentPlayer();
+
+            if (current && contestacao.podeContestar(lastConfirmedAnswer, current.id, players)) {
+
+                return current.id;
+
+            }
+
+            const eligible = players.find(player =>
+                contestacao.podeContestar(lastConfirmedAnswer, player.id, players)
+            );
+
+            return eligible ? eligible.id : null;
+
+        }
+
+        return contestacao.podeContestar(lastConfirmedAnswer, 'host', players)
+            ? 'host' : null;
+
+    }
+
+    function updateContestButton() {
+
+        if (!contestButton) return;
+
+        const allowed = Boolean(timerRunning && getContestadorId());
+
+        contestButton.disabled = !allowed;
+
+        contestButton.title = allowed
+            ? `Contestar a resposta de ${lastConfirmedAnswer.playerName}`
+            : players.length < 3
+                ? 'São necessários pelo menos três participantes na sala.'
+                : 'Aguardando uma resposta que possa ser contestada.';
+
+    }
+
+    function clearContestOpportunity() {
+
+        lastConfirmedAnswer = null;
+
+        finalContestWindow = false;
+
+        updateContestButton();
+
+    }
+
+    // A última letra exige uma oportunidade de contestação antes de
+    // decidir o vencedor. O prazo é o mesmo tempo configurado na sala.
+
+    function openFinalContestWindow() {
+
+        if (!getContestadorId()) return false;
+
+        finalContestWindow = true;
+
+        resetAnswerInput();
+
+        stopButton.disabled = true;
+
+        $('stop-label').textContent = 'AGUARDE';
+
+        turnIndicator.textContent = 'CONTESTAÇÃO FINAL';
+
+        $('game-status').textContent =
+            `Última resposta: ${lastConfirmedAnswer.playerName}. Conteste antes que o prazo termine.`;
+
+        updateLetters();
+
+        renderPlayers();
+
+        startTimer();
+
+        return true;
+
+    }
+
+    function closeFinalContestWindow() {
+
+        clearContestOpportunity();
+
+        stopTimer();
+
+        checkRoundEnd();
+
+    }
+
+    // Pausa o relógio com precisão de milissegundos. O jogador não
+    // recebe tempo adicional após a votação e mantém a resposta digitada.
+
+    function openContest() {
+
+        const contestadorId = getContestadorId();
+
+        if (!contestadorId || !timerRunning || !contestButton || contestButton.disabled) return;
+
+        if (!$('contestacao-overlay')) return;
+
+        const milliseconds = timerDeadline - performance.now();
+
+        if (milliseconds <= 0) {
+
+            handleTimeExpired();
+
+            return;
+
+        }
+
+        const response = lastConfirmedAnswer;
+
+        const paused = {
+
+            milliseconds,
+
+            playerId: getCurrentPlayer().id,
+
+            selectedLetter,
+
+            stopDisabled: stopButton.disabled,
+
+            inputDisabled: answerInput.disabled,
+
+            submitDisabled: answerSubmit.disabled,
+
+            status: $('game-status').textContent,
+
+            label: $('stop-label').textContent,
+
+            turn: turnIndicator.textContent,
+
+            finalWindow: finalContestWindow
+
+        };
+
+        const started = contestacao.iniciar({
+
+            resposta: response,
+
+            contestadorId,
+
+            jogadores: players,
+
+            jogadorLocalId: modoTeste ? contestadorId : 'host',
+
+            modoTeste,
+
+            aoFinalizar: result => applyContestResult(response, result),
+
+            aoContinuar: resumeAfterContest
+
+        });
+
+        if (!started) return;
+
+        pausedContestTurn = paused;
+
+        response.contested = true;
+
+        stopTimer();
+
+        remainingTime = Math.ceil(milliseconds / 1000);
+
+        updateTimerDisplay();
+
+        stopButton.disabled = true;
+
+        answerInput.disabled = true;
+
+        answerSubmit.disabled = true;
+
+        $('stop-label').textContent = 'PAUSADO';
+
+        turnIndicator.textContent = 'EM VOTAÇÃO';
+
+        gameScreen.setAttribute('inert', '');
+
+        updateLetters();
+
+        updateContestButton();
+
+    }
+
+    function applyContestResult(response, result) {
+
+        if (!response || result.respostaId !== response.id) return;
+
+        response.contested = true;
+
+        response.contestResult = { ...result };
+
+        if (result.rejeitada && response.status === 'accepted') {
+
+            response.status = 'rejected';
+
+            if (response.normalizedAnswer !== null) {
+
+                usedAnswers.delete(response.normalizedAnswer);
+
+            }
+
+            // Os acertos da morte súbita são contabilizados separadamente.
+
+            if (response.isTiebreak && inTiebreak()) {
+
+                ms.removerAcerto(response.playerId);
+
+            }
+
+            updatePlayerHits();
+
+            const index = players.findIndex(player => player.id === response.playerId);
+
+            if (index !== -1) {
+
+                eliminatePlayer(index, 'contestacao', response.letter);
+
+            }
+
+            // A letra contestada permanece consumida.
+
+        }
+
+        updatePlayerHits();
+
+        renderPlayers();
+
+        if (modoTeste) {
+
+            console.info('[STOP!] Resultado da contestação:', result);
+
+            logMatchRanking();
+
+        }
+
+    }
+
+    function resumeAfterContest(result) {
+
+        const paused = pausedContestTurn;
+
+        pausedContestTurn = null;
+
+        clearContestOpportunity();
+
+        if (!paused || roundFinished || matchFinished) return;
+
+        gameScreen.removeAttribute('inert');
+
+        // O resultado da votação da última letra precisa ser aplicado
+        // antes de atribuir uma carta ou iniciar um desempate.
+
+        if (paused.finalWindow) {
+
+            stopTimer();
+
+            checkRoundEnd();
+
+            return;
+
+        }
+
+        // Não verifica as letras esgotadas aqui: a última letra pode
+        // estar selecionada, mas ainda não ter sido respondida.
+
+        if (getActivePlayers().length <= 1) {
+
+            checkRoundEnd();
+
+            return;
+
+        }
+
+        if (getCurrentPlayer().id !== paused.playerId || getCurrentPlayer().eliminated) {
+
+            advanceTurn('Votação encerrada.');
+
+            return;
+
+        }
+
+        selectedLetter = paused.selectedLetter;
+
+        stopButton.disabled = paused.stopDisabled;
+
+        answerInput.disabled = paused.inputDisabled;
+
+        answerSubmit.disabled = paused.submitDisabled;
+
+        $('stop-label').textContent = paused.label;
+
+        turnIndicator.textContent = paused.turn;
+
+        $('game-status').textContent = result.rejeitada
+            ? `${result.jogadorNome} foi eliminado. ${paused.status}`
+            : `Resposta aceita. ${paused.status}`;
+
+        // Restaura o prazo original, sem reiniciar o turno.
+
+        stopTimer();
+
+        timerRunning = true;
+
+        timeExpired = false;
+
+        timerDeadline = performance.now() + paused.milliseconds;
+
+        remainingTime = Math.ceil(paused.milliseconds / 1000);
+
+        updateTimerDisplay();
+
+        timerInterval = setInterval(updateTimer, 100);
+
+        updateLetters();
+
+        renderPlayers();
+
+        updateContestButton();
+
+        if (!answerInput.disabled) {
+
+            answerInput.focus({ preventScroll: true });
+
+        } else if (!stopButton.disabled) {
+
+            stopButton.focus({ preventScroll: true });
+
+        }
+
+    }
+
+    if (contestButton) {
+
+        contestButton.addEventListener('click', openContest);
+
+    }
+
+    // ========================================
     // EVENTOS
     // ========================================
 
@@ -4377,6 +4790,10 @@
     );
 
     $('back-button').addEventListener('click', () => {
+
+        if (contestacao) contestacao.resetar();
+
+        clearContestOpportunity();
 
         stopTimer();
 
