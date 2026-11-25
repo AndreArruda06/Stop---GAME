@@ -292,7 +292,7 @@
     if (!modoTeste) {
         try {
             const { database, autenticarJogador } = await import('./firebase-config.js');
-            const { ref, get, onValue, set, onDisconnect, update } = await import(
+            const { ref, get, onValue, set, onDisconnect, update, serverTimestamp } = await import(
                 'https://www.gstatic.com/firebasejs/13.4.0/firebase-database.js'
             );
             const usuario = await autenticarJogador();
@@ -316,7 +316,7 @@
                 isHost: sala.anfitriao === usuario.uid
             };
             sessionStorage.setItem('roomConfig', JSON.stringify(roomConfig));
-            preparacaoOnline = { database, ref, onValue, set, onDisconnect, update, referencia, sala, uid: usuario.uid };
+            preparacaoOnline = { database, ref, onValue, set, onDisconnect, update, serverTimestamp, referencia, sala, uid: usuario.uid };
         } catch (erro) {
             console.error('[STOP!] Falha ao carregar a preparação:', erro);
             window.location.replace('lobby.html');
@@ -371,6 +371,7 @@
             .sort((a, b) => a.vaga - b.vaga)
             .map(jogador => ({
                 id: jogador.id,
+                vaga: jogador.vaga,
                 nickname: jogador.nickname,
                 score: 0,
                 roundHits: 0,
@@ -668,7 +669,10 @@
 
     function selectLetter(letter) {
 
-        if (preparacaoOnline) return;
+        if (preparacaoOnline) {
+            enviarJogadaOnline('letra', letter);
+            return;
+        }
 
         if (inContest() || finalContestWindow) return;
 
@@ -755,6 +759,7 @@
             );
 
             button.disabled =
+                (preparacaoOnline && !podeJogarOnline()) ||
                 inContest() ||
                 finalContestWindow ||
                 inTiebreak() ||
@@ -1224,7 +1229,10 @@
 
     function confirmAnswer() {
 
-        if (preparacaoOnline) return;
+        if (preparacaoOnline) {
+            enviarJogadaOnline('resposta');
+            return;
+        }
 
         if (inContest() || finalContestWindow) return;
 
@@ -2789,6 +2797,11 @@
 
     function updateTimer() {
 
+        if (preparacaoOnline) {
+            atualizarCronometroOnline();
+            return;
+        }
+
         if (!timerRunning) return;
 
         if (roundFinished || matchFinished) return;
@@ -3614,7 +3627,10 @@
 
     function handleStop() {
 
-        if (preparacaoOnline) return;
+        if (preparacaoOnline) {
+            enviarJogadaOnline(turnoAtualOnline ? 'resposta' : 'iniciar');
+            return;
+        }
 
         if (inContest() || finalContestWindow) return;
 
@@ -4491,6 +4507,12 @@
 
         if (!contestButton) return;
 
+        if (preparacaoOnline) {
+            contestButton.disabled = true;
+            contestButton.title = 'Contestação online ainda em desenvolvimento.';
+            return;
+        }
+
         const allowed = Boolean(timerRunning && getContestadorId());
 
         contestButton.disabled = !allowed;
@@ -4862,7 +4884,8 @@
             try {
                 await preparacaoOnline.update(preparacaoOnline.referencia, {
                     status: 'aguardando',
-                    sorteio: null
+                    sorteio: null,
+                    jogadas: null
                 });
                 window.location.replace('lobby.html');
             } catch (erro) {
@@ -4981,6 +5004,194 @@
     let sorteioGeracao = 0;
     let voltarSorteio = null;
 
+    // ========================================
+    // ROLETA E TURNOS ONLINE — PRIMEIRA RODADA
+    // ========================================
+
+    // Cada turno é registrado uma única vez. O relógio é calculado
+    // localmente a partir do horário de início gravado pelo servidor.
+    let jogadasOnline = null;
+    let turnoAtualOnline = null;
+    let assinaturaJogadasOnline = null;
+    let jogadaEnviando = false;
+    let deslocamentoServidor = 0;
+    let relogioOnlinePronto = false;
+    let intervaloOnline = null;
+
+    function horarioServidorOnline() {
+        return Date.now() + deslocamentoServidor;
+    }
+
+    function terminouSequenciaOnline() {
+        return Boolean(turnoAtualOnline && turnoAtualOnline.numero === 26 &&
+            typeof turnoAtualOnline.resposta === 'string');
+    }
+
+    function podeInteragirOnline() {
+        return Boolean(preparacaoOnline && sorteioOnline?.fase === 'aberta' &&
+            sorteioCapturado && sorteioConectado && relogioOnlinePronto &&
+            !jogadaEnviando && !sorteioEnviando && !preparacaoOnline.cancelando &&
+            players[currentPlayerIndex]?.id === preparacaoOnline.uid);
+    }
+
+    function podeJogarOnline() {
+        return podeInteragirOnline() && Boolean(turnoAtualOnline) &&
+            typeof turnoAtualOnline.resposta !== 'string' &&
+            horarioServidorOnline() < turnoAtualOnline.inicioEm + config.time * 1000;
+    }
+
+    function atualizarControlesJogadaOnline() {
+        if (!preparacaoOnline || sorteioOnline?.fase !== 'aberta' || !sorteioCapturado) return;
+        const autorizado = podeJogarOnline();
+        stopButton.disabled = turnoAtualOnline ? !autorizado : !podeInteragirOnline();
+        $('stop-label').textContent = terminouSequenciaOnline() ? 'AGUARDE' :
+            timeExpired ? 'TEMPO ESGOTADO' : turnoAtualOnline ? 'REINICIAR' : 'INICIAR';
+        updateLetters();
+        const responder = autorizado && Boolean(selectedLetter) && config.mode === 'sem-call';
+        answerInput.disabled = !responder;
+        answerSubmit.disabled = !responder;
+        if (contestButton) contestButton.disabled = true;
+        $('back-button').disabled = !roomConfig.isHost || !sorteioConectado || jogadaEnviando || Boolean(preparacaoOnline.cancelando);
+    }
+
+    function atualizarCronometroOnline() {
+        if (!preparacaoOnline || sorteioOnline?.fase !== 'aberta' || !sorteioCapturado) return;
+        const expiradoAntes = timeExpired;
+        const tempoAntes = remainingTime;
+        const rodandoAntes = timerRunning;
+        if (!turnoAtualOnline || !relogioOnlinePronto) {
+            remainingTime = config.time;
+            timerRunning = false;
+            timeExpired = false;
+        } else if (terminouSequenciaOnline()) {
+            remainingTime = 0;
+            timerRunning = false;
+            timeExpired = false;
+        } else {
+            const falta = Math.max(0, turnoAtualOnline.inicioEm + config.time * 1000 - horarioServidorOnline());
+            remainingTime = Math.min(config.time, Math.ceil(falta / 1000));
+            timerRunning = falta > 0;
+            timeExpired = falta === 0;
+        }
+        if (tempoAntes !== remainingTime || rodandoAntes !== timerRunning || expiradoAntes !== timeExpired) {
+            updateTimerDisplay();
+        }
+        if (expiradoAntes !== timeExpired || rodandoAntes !== timerRunning) {
+            atualizarControlesJogadaOnline();
+        }
+        if (timeExpired) {
+            const aviso = `Tempo de ${getCurrentPlayer().nickname} esgotado! Eliminação online será integrada na próxima etapa.`;
+            if ($('game-status').textContent !== aviso) $('game-status').textContent = aviso;
+        }
+    }
+
+    function aplicarJogadasOnline(dados, forcar = false) {
+        if (!sorteioCapturado || sorteioOnline?.fase !== 'aberta' || preparacaoOnline.cancelando) return;
+        const assinatura = JSON.stringify(dados || null);
+        if (!forcar && assinatura === assinaturaJogadasOnline) return;
+        assinaturaJogadasOnline = assinatura;
+        const anterior = turnoAtualOnline;
+        const registros = Object.values(dados?.turnos || {}).filter(Boolean)
+            .sort((a, b) => a.numero - b.numero);
+        turnoAtualOnline = registros.at(-1) || null;
+        const indice = turnoAtualOnline ? players.findIndex(p => p.vaga === turnoAtualOnline.vaga) : 0;
+        if (indice < 0) {
+            $('game-status').textContent = 'Turno inválido. Retorne ao lobby.';
+            return;
+        }
+        currentPlayerIndex = indice;
+        roundStarted = Boolean(turnoAtualOnline);
+        selectedLetter = turnoAtualOnline && typeof turnoAtualOnline.resposta !== 'string'
+            ? turnoAtualOnline.letra || null : null;
+        usedLetters.clear();
+        Object.keys(dados?.letras || {}).forEach(letra => usedLetters.add(letra));
+        usedAnswers.clear();
+        answerHistory.length = 0;
+        registros.filter(t => typeof t.resposta === 'string').forEach(t => {
+            const autor = players.find(p => p.vaga === t.vaga);
+            const normalizada = config.mode === 'sem-call' ? normalizeAnswer(t.resposta) : null;
+            if (normalizada) usedAnswers.add(normalizada);
+            answerHistory.push({ id: t.numero, round, playerId: autor.id, playerName: autor.nickname,
+                cardId: currentCard.id, theme: currentCard.tema, letter: t.letra, mode: config.mode,
+                answer: config.mode === 'sem-call' ? t.resposta : null, normalizedAnswer: normalizada,
+                status: 'accepted', contested: false, isTiebreak: false, tiebreakType: null, tiebreakAttempt: null });
+        });
+        lastConfirmedAnswer = answerHistory.at(-1) || null;
+        updatePlayerHits();
+        const mudouSelecao = anterior?.numero !== turnoAtualOnline?.numero || anterior?.letra !== turnoAtualOnline?.letra;
+        if (mudouSelecao || terminouSequenciaOnline()) resetAnswerInput();
+        $('selected-letter-box').hidden = !selectedLetter;
+        $('selected-letter').textContent = selectedLetter || '—';
+        if (selectedLetter) answerInput.placeholder = `Resposta com ${selectedLetter}...`;
+        renderPlayers();
+        updateTurnIndicator();
+        const nome = getCurrentPlayer().nickname;
+        const ultima = lastConfirmedAnswer;
+        const aviso = ultima ? `${ultima.playerName}: ${ultima.answer || 'resposta por voz'} confirmada. ` : '';
+        $('game-status').textContent = terminouSequenciaOnline()
+            ? 'Todas as letras foram usadas! Encerramento e premiação serão integrados na próxima etapa.'
+            : !turnoAtualOnline ? `${nome}, pressione STOP! para iniciar.`
+            : selectedLetter ? `${nome} escolheu ${selectedLetter}. ${config.mode === 'sem-call' ? 'Aguardando resposta.' : 'Confirme com STOP!.'}`
+            : `${aviso}Agora é a vez de ${nome}. Escolha uma letra livre.`;
+        atualizarCronometroOnline();
+        atualizarControlesJogadaOnline();
+        updateTimerDisplay();
+        if (mudouSelecao && !answerInput.disabled) answerInput.focus({ preventScroll: true });
+    }
+
+    async function enviarJogadaOnline(acao, letra = null) {
+        if (!podeInteragirOnline()) return;
+        const { update, referencia, serverTimestamp } = preparacaoOnline;
+        const alteracoes = {};
+        const rascunho = answerInput.value;
+        if (acao === 'iniciar') {
+            if (turnoAtualOnline || stopButton.disabled) return;
+            alteracoes['jogadas/turnos/1'] = { numero: 1, vaga: players[0].vaga, anteriorVaga: 0, inicioEm: serverTimestamp() };
+        } else {
+            if (!podeJogarOnline()) return;
+            const t = turnoAtualOnline;
+            const caminho = `jogadas/turnos/${t.numero}`;
+            if (acao === 'letra') {
+                if (selectedLetter || usedLetters.has(letra) || !/^[A-Z]$/.test(letra || '')) return;
+                alteracoes[`${caminho}/letra`] = letra;
+                alteracoes[`jogadas/letras/${letra}`] = t.numero;
+            } else if (acao === 'resposta') {
+                if (!selectedLetter) {
+                    $('game-status').textContent = 'Escolha uma letra primeiro.';
+                    return;
+                }
+                let resposta = '';
+                if (config.mode === 'sem-call') {
+                    const validacao = validateTextAnswer();
+                    if (!validacao.valid) { showAnswerError(validacao.message); return; }
+                    resposta = validacao.answer;
+                }
+                alteracoes[`${caminho}/resposta`] = resposta;
+                if (t.numero < 26) {
+                    const proximo = players[(currentPlayerIndex + 1) % players.length];
+                    alteracoes[`jogadas/turnos/${t.numero + 1}`] = {
+                        numero: t.numero + 1, vaga: proximo.vaga, anteriorVaga: t.vaga, inicioEm: serverTimestamp()
+                    };
+                }
+            } else return;
+        }
+        jogadaEnviando = true;
+        atualizarControlesJogadaOnline();
+        try {
+            await update(referencia, alteracoes);
+        } catch (erro) {
+            console.error('[STOP!] Jogada online recusada:', erro);
+            if (acao === 'resposta' && selectedLetter) answerInput.value = rascunho;
+            $('game-status').textContent = 'Jogada não confirmada pelo servidor. Verifique a conexão e o tempo.';
+        } finally {
+            jogadaEnviando = false;
+            atualizarCronometroOnline();
+            atualizarControlesJogadaOnline();
+            if (!answerInput.disabled && acao === 'letra') answerInput.focus({ preventScroll: true });
+        }
+    }
+
+
     function atualizarBotoesSorteioOnline() {
         const autorizado = roomConfig.isHost && sorteioConectado &&
             sorteioCapturado && !sorteioEnviando && !sorteioAnimando &&
@@ -4989,6 +5200,7 @@
         startRoundButton.disabled = !autorizado || sorteioOnline?.fase !== 'sorteada';
         $('back-button').disabled = !roomConfig.isHost || !sorteioConectado || Boolean(preparacaoOnline.cancelando);
         if (voltarSorteio) voltarSorteio.disabled = $('back-button').disabled;
+        atualizarControlesJogadaOnline();
     }
 
     async function enviarSorteioOnline(fase) {
@@ -5048,9 +5260,7 @@
             drawOverlay.hidden = true;
             gameScreen.removeAttribute('inert');
             $('current-theme').textContent = carta.tema;
-            $('stop-label').textContent = 'AGUARDE';
-            updateTurnIndicator();
-            $('game-status').textContent = 'Tema sincronizado! Jogadas online em desenvolvimento.';
+            aplicarJogadasOnline(jogadasOnline, true);
             atualizarBotoesSorteioOnline();
             return;
         }
@@ -5096,7 +5306,7 @@
         setupInterface();
 
         if (preparacaoOnline) {
-            // O primeiro sorteio é compartilhado; as jogadas continuam bloqueadas.
+            // Sorteio, roleta e turnos compartilhados; demais fases ainda bloqueadas.
             drawOverlay.hidden = true;
             gameScreen.querySelectorAll('button, input, textarea, select').forEach(elemento => {
                 if (elemento.id !== 'back-button') elemento.disabled = true;
@@ -5116,6 +5326,7 @@
                 $('draw-status').after(voltarSorteio);
             }
             sorteioOnline = preparacaoOnline.sala.sorteio || null;
+            jogadasOnline = preparacaoOnline.sala.jogadas || null;
             const { database, ref, onValue, set, onDisconnect, referencia, uid } = preparacaoOnline;
             const presenca = ref(database, `salas/${config.roomCode}/jogadores/${uid}/conectado`);
             let geracaoPresenca = 0;
@@ -5133,14 +5344,24 @@
                     const mudou = novo?.cartaId !== sorteioOnline?.cartaId || novo?.fase !== sorteioOnline?.fase;
                     const animar = !sorteioPrimeiraLeitura && !sorteioOnline && novo?.fase === 'sorteada';
                     sorteioOnline = novo;
+                    jogadasOnline = sala.jogadas || null;
                     sorteioPrimeiraLeitura = false;
                     if (mudou) aplicarSorteioOnline(novo, animar);
+                    else aplicarJogadasOnline(jogadasOnline);
                 }
             }, erro => {
                 console.error('[STOP!] Falha ao observar preparação:', erro);
                 sorteioConectado = false;
                 atualizarBotoesSorteioOnline();
                 $('draw-status').textContent = 'Não foi possível sincronizar o sorteio.';
+            });
+            const pararRelogio = onValue(ref(database, '.info/serverTimeOffset'), snapshot => {
+                const valor = snapshot.val();
+                if (typeof valor !== 'number') return;
+                deslocamentoServidor = valor;
+                relogioOnlinePronto = true;
+                atualizarCronometroOnline();
+                atualizarControlesJogadaOnline();
             });
             const pararPresenca = onValue(ref(database, '.info/connected'), async snapshot => {
                 const tentativa = ++geracaoPresenca;
@@ -5163,6 +5384,8 @@
                 geracaoPresenca++;
                 pararSala();
                 pararPresenca();
+                pararRelogio();
+                clearInterval(intervaloOnline);
             }, { once: true });
             window.addEventListener('pageshow', evento => {
                 if (evento.persisted) window.location.reload();
@@ -5171,6 +5394,7 @@
             if (saindo) return;
             sorteioCapturado = true;
             aplicarSorteioOnline(sorteioOnline);
+            intervaloOnline = setInterval(atualizarCronometroOnline, 100);
             return;
         }
 
