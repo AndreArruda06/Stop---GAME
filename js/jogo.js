@@ -292,7 +292,7 @@
     if (!modoTeste) {
         try {
             const { database, autenticarJogador } = await import('./firebase-config.js');
-            const { ref, get, onValue, set, onDisconnect } = await import(
+            const { ref, get, onValue, set, onDisconnect, update } = await import(
                 'https://www.gstatic.com/firebasejs/13.4.0/firebase-database.js'
             );
             const usuario = await autenticarJogador();
@@ -316,7 +316,7 @@
                 isHost: sala.anfitriao === usuario.uid
             };
             sessionStorage.setItem('roomConfig', JSON.stringify(roomConfig));
-            preparacaoOnline = { database, ref, onValue, set, onDisconnect, referencia, sala, uid: usuario.uid };
+            preparacaoOnline = { database, ref, onValue, set, onDisconnect, update, referencia, sala, uid: usuario.uid };
         } catch (erro) {
             console.error('[STOP!] Falha ao carregar a preparação:', erro);
             window.location.replace('lobby.html');
@@ -667,6 +667,8 @@
     // ========================================
 
     function selectLetter(letter) {
+
+        if (preparacaoOnline) return;
 
         if (inContest() || finalContestWindow) return;
 
@@ -1222,6 +1224,8 @@
 
     function confirmAnswer() {
 
+        if (preparacaoOnline) return;
+
         if (inContest() || finalContestWindow) return;
 
         if (!currentCard || !roundStarted) return;
@@ -1522,7 +1526,7 @@
         // Preparação para o multiplayer.
 
         const localPlayer =
-            players.find(player => player.id === 'host');
+            players.find(player => player.id === preparacaoOnline?.uid);
 
         if (localPlayer && localPlayer.eliminated) {
 
@@ -1534,7 +1538,7 @@
         }
 
         turnIndicator.textContent =
-            currentPlayer.id === 'host'
+            currentPlayer.id === preparacaoOnline?.uid
                 ? 'SUA VEZ'
                 : 'AGUARDANDO';
 
@@ -3068,6 +3072,8 @@
 
     async function prepareNextRound() {
 
+        if (preparacaoOnline) return;
+
         if (!roundFinished) return;
 
         if (matchFinished) return;
@@ -3281,6 +3287,11 @@
 
     async function drawTheme() {
 
+        if (preparacaoOnline) {
+            await enviarSorteioOnline('sorteada');
+            return;
+        }
+
         if (players.length < 2) return;
 
         if (isShuffling) return;
@@ -3373,6 +3384,11 @@
     // ========================================
 
     function startRound() {
+
+        if (preparacaoOnline) {
+            enviarSorteioOnline('aberta');
+            return;
+        }
 
         if (!currentCard || isShuffling) return;
 
@@ -3598,6 +3614,8 @@
 
     function handleStop() {
 
+        if (preparacaoOnline) return;
+
         if (inContest() || finalContestWindow) return;
 
         if (!currentCard) return;
@@ -3779,6 +3797,8 @@
     // ========================================
 
     function finishMatch() {
+
+        if (preparacaoOnline) return;
 
         // Exige que a última rodada esteja encerrada.
 
@@ -4159,6 +4179,8 @@
 
     async function prepareTiebreak() {
 
+        if (preparacaoOnline) return;
+
         if (!inTiebreak() || isPreparingNextRound || matchFinished) return;
 
         if (msStartButton.disabled) return;
@@ -4536,6 +4558,8 @@
 
     function openContest() {
 
+        if (preparacaoOnline) return;
+
         const contestadorId = getContestadorId();
 
         if (!contestadorId || !timerRunning || !contestButton || contestButton.disabled) return;
@@ -4834,17 +4858,19 @@
             if (!roomConfig.isHost || $('back-button').disabled) return;
             $('back-button').disabled = true;
             preparacaoOnline.cancelando = true;
+            atualizarBotoesSorteioOnline();
             try {
-                await preparacaoOnline.set(
-                    preparacaoOnline.ref(preparacaoOnline.database, `salas/${config.roomCode}/status`),
-                    'aguardando'
-                );
+                await preparacaoOnline.update(preparacaoOnline.referencia, {
+                    status: 'aguardando',
+                    sorteio: null
+                });
                 window.location.replace('lobby.html');
             } catch (erro) {
                 preparacaoOnline.cancelando = false;
                 console.error('[STOP!] Erro ao retornar ao lobby:', erro);
                 $('game-status').textContent = 'Não foi possível retornar. Tente novamente.';
                 $('back-button').disabled = false;
+                atualizarBotoesSorteioOnline();
             }
             return;
         }
@@ -4943,6 +4969,123 @@
     });
 
     // ========================================
+    // SORTEIO ONLINE — PRIMEIRA RODADA
+    // ========================================
+
+    let sorteioOnline = null;
+    let sorteioConectado = false;
+    let sorteioEnviando = false;
+    let sorteioCapturado = false;
+    let sorteioAnimando = false;
+    let sorteioPrimeiraLeitura = true;
+    let sorteioGeracao = 0;
+    let voltarSorteio = null;
+
+    function atualizarBotoesSorteioOnline() {
+        const autorizado = roomConfig.isHost && sorteioConectado &&
+            sorteioCapturado && !sorteioEnviando && !sorteioAnimando &&
+            !preparacaoOnline.cancelando;
+        drawButton.disabled = !autorizado || Boolean(sorteioOnline);
+        startRoundButton.disabled = !autorizado || sorteioOnline?.fase !== 'sorteada';
+        $('back-button').disabled = !roomConfig.isHost || !sorteioConectado || Boolean(preparacaoOnline.cancelando);
+        if (voltarSorteio) voltarSorteio.disabled = $('back-button').disabled;
+    }
+
+    async function enviarSorteioOnline(fase) {
+        if (!roomConfig.isHost || !sorteioConectado || !sorteioCapturado ||
+            sorteioEnviando || sorteioAnimando || preparacaoOnline.cancelando) return;
+        if (fase === 'sorteada' && (sorteioOnline || drawButton.disabled)) return;
+        if (fase === 'aberta' && (sorteioOnline?.fase !== 'sorteada' || startRoundButton.disabled)) return;
+        const { database, ref, set } = preparacaoOnline;
+        const cartaId = fase === 'sorteada'
+            ? shuffleCards(BANCO_CARTAS)[0].id
+            : sorteioOnline.cartaId;
+        sorteioEnviando = true;
+        atualizarBotoesSorteioOnline();
+        try {
+            await set(ref(database, `salas/${config.roomCode}/sorteio`), { cartaId, fase });
+        } catch (erro) {
+            console.error('[STOP!] Falha no sorteio online:', erro);
+            $('draw-status').textContent = 'Não foi possível concluir. Tente novamente.';
+            $('game-status').textContent = 'Não foi possível concluir o sorteio.';
+        } finally {
+            sorteioEnviando = false;
+            atualizarBotoesSorteioOnline();
+        }
+    }
+
+    function aplicarSorteioOnline(sorteio, animar = false) {
+        if (!sorteioCapturado || preparacaoOnline.cancelando) return;
+        const geracao = ++sorteioGeracao;
+        sorteioAnimando = false;
+        deck.classList.remove('shuffling');
+        drawOverlay.classList.remove('closing');
+        if (!sorteio) {
+            currentCard = null;
+            drawCard.classList.remove('revealed');
+            $('drawn-theme').textContent = '';
+            drawButton.hidden = false;
+            drawButton.textContent = 'EMBARALHAR E SORTEAR';
+            startRoundButton.hidden = true;
+            drawOverlay.hidden = false;
+            $('draw-status').textContent = roomConfig.isHost
+                ? 'Você realizará o sorteio.'
+                : `Aguardando ${players[0].nickname} sortear a carta.`;
+            $('remaining-cards').textContent = `${config.cards} ${config.cards === 1 ? 'carta restante' : 'cartas restantes'}`;
+            atualizarBotoesSorteioOnline();
+            return;
+        }
+        const carta = BANCO_CARTAS.find(item => item.id === sorteio.cartaId);
+        if (!carta) {
+            $('draw-status').textContent = 'Carta desconhecida. Atualize o jogo.';
+            drawButton.disabled = true;
+            startRoundButton.disabled = true;
+            return;
+        }
+        currentCard = carta;
+        $('remaining-cards').textContent = `${config.cards - 1} ${config.cards - 1 === 1 ? 'carta restante' : 'cartas restantes'}`;
+        if (sorteio.fase === 'aberta') {
+            drawOverlay.hidden = true;
+            gameScreen.removeAttribute('inert');
+            $('current-theme').textContent = carta.tema;
+            $('stop-label').textContent = 'AGUARDE';
+            updateTurnIndicator();
+            $('game-status').textContent = 'Tema sincronizado! Jogadas online em desenvolvimento.';
+            atualizarBotoesSorteioOnline();
+            return;
+        }
+        drawOverlay.hidden = false;
+        const revelar = () => {
+            if (geracao !== sorteioGeracao) return;
+            deck.classList.remove('shuffling');
+            $('drawn-theme').textContent = carta.tema;
+            drawCard.classList.add('revealed');
+            const concluir = () => {
+                if (geracao !== sorteioGeracao) return;
+                drawButton.hidden = true;
+                startRoundButton.hidden = false;
+                sorteioAnimando = false;
+                $('draw-status').textContent = roomConfig.isHost
+                    ? 'Tema sorteado! Prepare-se.'
+                    : 'Tema sorteado! Aguarde o anfitrião.';
+                atualizarBotoesSorteioOnline();
+            };
+            if (animar) setTimeout(concluir, 550); else concluir();
+        };
+        if (animar && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            sorteioAnimando = true;
+            drawButton.textContent = 'EMBARALHANDO...';
+            drawButton.disabled = true;
+            $('draw-status').textContent = 'Preparando o próximo desafio...';
+            deck.classList.add('shuffling');
+            setTimeout(revelar, 960);
+        } else {
+            animar = false;
+            revelar();
+        }
+    }
+
+    // ========================================
     // INICIALIZAÇÃO
     // ========================================
 
@@ -4953,8 +5096,7 @@
         setupInterface();
 
         if (preparacaoOnline) {
-            // Nesta etapa somente a entrada na tela é compartilhada.
-            // Nenhum comando local de jogo é permitido.
+            // O primeiro sorteio é compartilhado; as jogadas continuam bloqueadas.
             drawOverlay.hidden = true;
             gameScreen.querySelectorAll('button, input, textarea, select').forEach(elemento => {
                 if (elemento.id !== 'back-button') elemento.disabled = true;
@@ -4963,9 +5105,17 @@
                 .filter(Boolean).forEach(elemento => { elemento.disabled = true; });
             $('back-button').disabled = !roomConfig.isHost;
             turnIndicator.textContent = 'PREPARANDO PARTIDA ONLINE';
-            $('game-status').textContent = roomConfig.isHost
-                ? 'Participantes sincronizados. Use voltar para retornar todos ao lobby.'
-                : 'Participantes sincronizados. Aguarde o anfitrião. Jogadas online em desenvolvimento.';
+            $('game-status').textContent = 'Aguardando o sorteio online.';
+            // Mantém o retorno ao lobby disponível mesmo com a sobreposição aberta.
+            if (roomConfig.isHost) {
+                voltarSorteio = document.createElement('button');
+                voltarSorteio.type = 'button';
+                voltarSorteio.className = 'primary-button draw-button';
+                voltarSorteio.textContent = 'VOLTAR AO LOBBY';
+                voltarSorteio.addEventListener('click', () => $('back-button').click());
+                $('draw-status').after(voltarSorteio);
+            }
+            sorteioOnline = preparacaoOnline.sala.sorteio || null;
             const { database, ref, onValue, set, onDisconnect, referencia, uid } = preparacaoOnline;
             const presenca = ref(database, `salas/${config.roomCode}/jogadores/${uid}/conectado`);
             let geracaoPresenca = 0;
@@ -4978,15 +5128,32 @@
                     window.location.replace(`salas.html?modo=${encodeURIComponent(config.mode)}`);
                 } else if (sala.status === 'aguardando' && !preparacaoOnline.cancelando) {
                     window.location.replace('lobby.html');
+                } else if (sala.status === 'preparando') {
+                    const novo = sala.sorteio || null;
+                    const mudou = novo?.cartaId !== sorteioOnline?.cartaId || novo?.fase !== sorteioOnline?.fase;
+                    const animar = !sorteioPrimeiraLeitura && !sorteioOnline && novo?.fase === 'sorteada';
+                    sorteioOnline = novo;
+                    sorteioPrimeiraLeitura = false;
+                    if (mudou) aplicarSorteioOnline(novo, animar);
                 }
-            }, erro => console.error('[STOP!] Falha ao observar preparação:', erro));
+            }, erro => {
+                console.error('[STOP!] Falha ao observar preparação:', erro);
+                sorteioConectado = false;
+                atualizarBotoesSorteioOnline();
+                $('draw-status').textContent = 'Não foi possível sincronizar o sorteio.';
+            });
             const pararPresenca = onValue(ref(database, '.info/connected'), async snapshot => {
                 const tentativa = ++geracaoPresenca;
+                sorteioConectado = false;
+                atualizarBotoesSorteioOnline();
                 if (saindo || snapshot.val() !== true) return;
                 try {
                     await onDisconnect(presenca).set(false);
                     if (saindo || tentativa !== geracaoPresenca) return;
                     await set(presenca, true);
+                    if (saindo || tentativa !== geracaoPresenca) return;
+                    sorteioConectado = true;
+                    atualizarBotoesSorteioOnline();
                 } catch (erro) {
                     console.error('[STOP!] Falha na presença da preparação:', erro);
                 }
@@ -5000,6 +5167,10 @@
             window.addEventListener('pageshow', evento => {
                 if (evento.persisted) window.location.reload();
             });
+            await requestBackgroundCapture();
+            if (saindo) return;
+            sorteioCapturado = true;
+            aplicarSorteioOnline(sorteioOnline);
             return;
         }
 
