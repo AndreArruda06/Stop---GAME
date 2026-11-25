@@ -351,6 +351,11 @@ async function entrarSalaOnline(config) {
 
         }
 
+        // Permite que participantes existentes retomem a preparação.
+        if (sala.status === 'preparando' && sala.jogadores?.[uid]) {
+            return montarConfiguracaoLobby(sala, uid);
+        }
+
         // Impede entrada em partidas iniciadas.
 
         if (sala.status !== 'aguardando') {
@@ -535,6 +540,27 @@ async function sairSalaOnline(codigo) {
 }
 
 // ========================================
+// INICIAR A PREPARAÇÃO ONLINE
+// ========================================
+
+async function iniciarPartidaOnline(codigo) {
+    if (typeof codigo !== 'string' || !/^[A-Z0-9]{6}$/.test(codigo)) {
+        throw new Error('Código de sala inválido.');
+    }
+    const usuario = await autenticarJogador();
+    const sala = (await get(ref(database, `salas/${codigo}`))).val();
+    if (!sala || sala.anfitriao !== usuario.uid || sala.status !== 'aguardando') {
+        throw new Error('Somente o anfitrião pode iniciar uma sala em espera.');
+    }
+    const participantes = Object.values(sala.jogadores || {});
+    if (participantes.length < 2 || !participantes.every(j => j.pronto && j.conectado)) {
+        throw new Error('Todos os participantes devem estar conectados e prontos.');
+    }
+    // As regras revalidam o estado atual no servidor.
+    await set(ref(database, `salas/${codigo}/status`), 'preparando');
+}
+
+// ========================================
 // EXPORTAÇÃO DAS FUNÇÕES
 // ========================================
 
@@ -545,6 +571,8 @@ export {
     entrarSalaOnline,
 
     sairSalaOnline,
+
+    iniciarPartidaOnline,
 
     gerarCodigoSala
 

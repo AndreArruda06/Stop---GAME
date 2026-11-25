@@ -1,4 +1,4 @@
-(() => {
+(async () => {
     'use strict';
 
     // ========================================
@@ -285,6 +285,45 @@
 
     }
 
+    // Preparação online: o Firebase é a fonte dos participantes e configurações.
+    // Os testes do desenvolvedor continuam totalmente locais.
+    let preparacaoOnline = null;
+
+    if (!modoTeste) {
+        try {
+            const { database, autenticarJogador } = await import('./firebase-config.js');
+            const { ref, get, onValue, set, onDisconnect } = await import(
+                'https://www.gstatic.com/firebasejs/13.4.0/firebase-database.js'
+            );
+            const usuario = await autenticarJogador();
+            const codigo = roomConfig.roomCode;
+            if (!/^[A-Z0-9]{6}$/.test(codigo || '')) throw new Error('Código inválido.');
+            const referencia = ref(database, `salas/${codigo}`);
+            const sala = (await get(referencia)).val();
+            if (!sala?.jogadores?.[usuario.uid]) throw new Error('Você não pertence à sala.');
+            if (sala.status !== 'preparando') {
+                window.location.replace('lobby.html');
+                return;
+            }
+            roomConfig = {
+                ...roomConfig,
+                roomName: sala.nome, mode: sala.modo,
+                players: sala.configuracoes.maxJogadores,
+                time: sala.configuracoes.tempo,
+                cards: sala.configuracoes.quantidadeCartas,
+                nickname: sala.jogadores[usuario.uid].nickname,
+                playerId: usuario.uid, hostId: sala.anfitriao,
+                isHost: sala.anfitriao === usuario.uid
+            };
+            sessionStorage.setItem('roomConfig', JSON.stringify(roomConfig));
+            preparacaoOnline = { database, ref, onValue, set, onDisconnect, referencia, sala, uid: usuario.uid };
+        } catch (erro) {
+            console.error('[STOP!] Falha ao carregar a preparação:', erro);
+            window.location.replace('lobby.html');
+            return;
+        }
+    }
+
     const config = {
 
         nickname: roomConfig.nickname || 'Jogador',
@@ -326,18 +365,18 @@
             totalHits: 0
         }))
 
-        // Sala normal: integração multiplayer futura.
+        // Participantes reais, na ordem das vagas reservadas.
 
-        : [
-            {
-                id: 'host',
-                nickname: config.nickname,
+        : Object.values(preparacaoOnline.sala.jogadores)
+            .sort((a, b) => a.vaga - b.vaga)
+            .map(jogador => ({
+                id: jogador.id,
+                nickname: jogador.nickname,
                 score: 0,
                 roundHits: 0,
                 totalHits: 0,
                 eliminated: false
-            }
-        ];
+            }));
 
     // ========================================
     // ESTADO DA PARTIDA
@@ -468,7 +507,7 @@
 
     // Seleciona somente a quantidade configurada.
 
-    const matchDeck = shuffleCards(BANCO_CARTAS)
+    const matchDeck = (preparacaoOnline ? BANCO_CARTAS : shuffleCards(BANCO_CARTAS))
         .slice(0, config.cards);
 
     // ========================================
@@ -4789,7 +4828,26 @@
 
     );
 
-    $('back-button').addEventListener('click', () => {
+    $('back-button').addEventListener('click', async () => {
+
+        if (preparacaoOnline) {
+            if (!roomConfig.isHost || $('back-button').disabled) return;
+            $('back-button').disabled = true;
+            preparacaoOnline.cancelando = true;
+            try {
+                await preparacaoOnline.set(
+                    preparacaoOnline.ref(preparacaoOnline.database, `salas/${config.roomCode}/status`),
+                    'aguardando'
+                );
+                window.location.replace('lobby.html');
+            } catch (erro) {
+                preparacaoOnline.cancelando = false;
+                console.error('[STOP!] Erro ao retornar ao lobby:', erro);
+                $('game-status').textContent = 'Não foi possível retornar. Tente novamente.';
+                $('back-button').disabled = false;
+            }
+            return;
+        }
 
         if (contestacao) contestacao.resetar();
 
@@ -4893,6 +4951,57 @@
         // Monta a interface e os elementos da roleta.
 
         setupInterface();
+
+        if (preparacaoOnline) {
+            // Nesta etapa somente a entrada na tela é compartilhada.
+            // Nenhum comando local de jogo é permitido.
+            drawOverlay.hidden = true;
+            gameScreen.querySelectorAll('button, input, textarea, select').forEach(elemento => {
+                if (elemento.id !== 'back-button') elemento.disabled = true;
+            });
+            [drawButton, startRoundButton, stopButton, nextRoundButton, finishGameButton, answerInput, answerSubmit, contestButton, msStartButton]
+                .filter(Boolean).forEach(elemento => { elemento.disabled = true; });
+            $('back-button').disabled = !roomConfig.isHost;
+            turnIndicator.textContent = 'PREPARANDO PARTIDA ONLINE';
+            $('game-status').textContent = roomConfig.isHost
+                ? 'Participantes sincronizados. Use voltar para retornar todos ao lobby.'
+                : 'Participantes sincronizados. Aguarde o anfitrião. Jogadas online em desenvolvimento.';
+            const { database, ref, onValue, set, onDisconnect, referencia, uid } = preparacaoOnline;
+            const presenca = ref(database, `salas/${config.roomCode}/jogadores/${uid}/conectado`);
+            let geracaoPresenca = 0;
+            let saindo = false;
+            const pararSala = onValue(referencia, snapshot => {
+                const sala = snapshot.val();
+                if (!sala || !sala.jogadores?.[uid]) {
+                    sessionStorage.removeItem('roomConfig');
+                    sessionStorage.removeItem('joinConfig');
+                    window.location.replace(`salas.html?modo=${encodeURIComponent(config.mode)}`);
+                } else if (sala.status === 'aguardando' && !preparacaoOnline.cancelando) {
+                    window.location.replace('lobby.html');
+                }
+            }, erro => console.error('[STOP!] Falha ao observar preparação:', erro));
+            const pararPresenca = onValue(ref(database, '.info/connected'), async snapshot => {
+                const tentativa = ++geracaoPresenca;
+                if (saindo || snapshot.val() !== true) return;
+                try {
+                    await onDisconnect(presenca).set(false);
+                    if (saindo || tentativa !== geracaoPresenca) return;
+                    await set(presenca, true);
+                } catch (erro) {
+                    console.error('[STOP!] Falha na presença da preparação:', erro);
+                }
+            });
+            window.addEventListener('pagehide', () => {
+                saindo = true;
+                geracaoPresenca++;
+                pararSala();
+                pararPresenca();
+            }, { once: true });
+            window.addEventListener('pageshow', evento => {
+                if (evento.persisted) window.location.reload();
+            });
+            return;
+        }
 
         // Captura o jogo com a sobreposição escondida.
 

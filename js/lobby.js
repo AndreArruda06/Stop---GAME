@@ -84,7 +84,12 @@ async function initializeOnlineLobby() {
             throw new Error('Sala indisponível para este jogador.');
         }
 
-        const { sairSalaOnline } = await import('./salas-online.js');
+        const { sairSalaOnline, iniciarPartidaOnline } = await import('./salas-online.js');
+        if (sala.status === 'preparando') {
+            window.location.replace('jogo.html');
+            return;
+        }
+        let iniciandoNoServidor = false;
         const presenca = ref(database, `salas/${codigo}/jogadores/${usuario.uid}/conectado`);
         let conectado = false;
         let encerrando = false;
@@ -131,6 +136,16 @@ async function initializeOnlineLobby() {
                     throw erro;
                 }
             },
+            iniciar: async () => {
+                if (!conectado || encerrando || iniciandoNoServidor) return;
+                iniciandoNoServidor = true;
+                try {
+                    await iniciarPartidaOnline(codigo);
+                    window.location.replace('jogo.html');
+                } finally {
+                    iniciandoNoServidor = false;
+                }
+            },
             enviarMensagem: texto => set(push(chatRef), {
                 uid: usuario.uid,
                 nickname: sala.jogadores[usuario.uid].nickname,
@@ -157,6 +172,11 @@ async function initializeOnlineLobby() {
             const salaAtual = snapshotAtual.val();
             if (!salaAtual || !salaAtual.jogadores?.[usuario.uid]) {
                 voltarParaSalas();
+                return;
+            }
+            if (salaAtual.status === 'preparando') {
+                // O anfitrião aguarda a confirmação da gravação antes de navegar.
+                if (!iniciandoNoServidor) window.location.replace('jogo.html');
                 return;
             }
             atualizarSala(salaAtual);
@@ -213,6 +233,7 @@ function initializeLobby(online = null) {
 
     const isOnline = online !== null;
     let saindoSala = false;
+    let iniciandoPartida = false;
     let salvandoPronto = false;
     let salvandoConfiguracao = false;
     const camposOnline = { players: "maxJogadores", time: "tempo", cards: "quantidadeCartas" };
@@ -478,7 +499,7 @@ function initializeLobby(online = null) {
                 const nextValue = setting.value + step;
 
                 button.disabled =
-                    (isOnline && (salvandoConfiguracao || saindoSala || !online.estaConectado() || statusSala !== 'aguardando')) ||
+                    (isOnline && (salvandoConfiguracao || iniciandoPartida || saindoSala || !online.estaConectado() || statusSala !== 'aguardando')) ||
                     !isHost ||
                     nextValue < minimum ||
                     nextValue > setting.max;
@@ -686,7 +707,7 @@ function initializeLobby(online = null) {
 
         // Estado do anfitrião
         startButton.disabled =
-            isOnline ||
+            (isOnline && (iniciandoPartida || saindoSala || salvandoConfiguracao || !online.estaConectado() || statusSala !== 'aguardando')) ||
             !isHost ||
             !enoughPlayers ||
             !everyoneReady;
@@ -750,9 +771,9 @@ function initializeLobby(online = null) {
 
         if (isOnline) {
             readyButton.disabled = isHost || salvandoPronto || saindoSala || !online.estaConectado() || !currentPlayer || statusSala !== 'aguardando';
-            leaveButton.disabled = saindoSala || !online.estaConectado();
+            leaveButton.disabled = saindoSala || iniciandoPartida || !online.estaConectado();
             if (isHost && enoughPlayers && everyoneReady) {
-                lobbyStatus.textContent = 'Todos prontos! Início da partida em desenvolvimento.';
+                lobbyStatus.textContent = 'Todos prontos! O anfitrião pode iniciar a preparação.';
             }
             if (!online.estaConectado()) {
                 lobbyStatus.textContent = 'Conexão indisponível. Aguardando reconexão...';
@@ -772,7 +793,7 @@ function initializeLobby(online = null) {
             button.addEventListener('click', async () => {
 
                 // Impede alterações feitas por convidados
-                if (!isHost || button.disabled || (isOnline && (salvandoConfiguracao || saindoSala || !online.estaConectado() || statusSala !== 'aguardando'))) {
+                if (!isHost || button.disabled || (isOnline && (salvandoConfiguracao || iniciandoPartida || saindoSala || !online.estaConectado() || statusSala !== 'aguardando'))) {
                     return;
                 }
 
@@ -879,14 +900,28 @@ function initializeLobby(online = null) {
     });
 
     // Iniciar partida
-    startButton.addEventListener('click', () => {
+    startButton.addEventListener('click', async () => {
 
-        if (!isHost || startButton.disabled) {
+        if (!isHost || startButton.disabled || iniciandoPartida) return;
+
+        if (!isOnline) {
+            lobbyStatus.textContent = 'Modo de teste local.';
             return;
         }
 
-        lobbyStatus.textContent =
-            'A partida multiplayer ainda não está disponível.';
+        iniciandoPartida = true;
+        updateSettings();
+        updateLobbyStatus();
+        lobbyStatus.textContent = 'Iniciando preparação da partida...';
+        try {
+            await online.iniciar();
+        } catch (erro) {
+            console.error('[STOP!] Erro ao iniciar:', erro);
+            iniciandoPartida = false;
+            updateSettings();
+            updateLobbyStatus();
+            lobbyStatus.textContent = 'Não foi possível iniciar. Confira se todos estão prontos e conectados.';
+        }
 
     });
 
@@ -894,7 +929,7 @@ function initializeLobby(online = null) {
     leaveButton.addEventListener('click', async () => {
 
         if (isOnline) {
-            if (saindoSala || !online.estaConectado()) return;
+            if (saindoSala || iniciandoPartida || !online.estaConectado()) return;
             saindoSala = true;
             atualizarChat();
             updateSettings();
