@@ -1,5 +1,6 @@
-
-/* Identidade visual */
+/* ========================================
+   IDENTIDADE VISUAL
+======================================== */
 
 :root {
     --blue: #1768b5;
@@ -55,7 +56,9 @@ input:focus-visible {
     outline-offset: 3px;
 }
 
-/* Tela principal */
+/* ========================================
+   TELA PRINCIPAL
+======================================== */
 
 .game-screen {
     min-height: 100vh;
@@ -136,7 +139,9 @@ input:focus-visible {
     font-weight: 900;
 }
 
-/* Conteúdo principal */
+/* ========================================
+   CONTEÚDO PRINCIPAL
+======================================== */
 
 .page {
     width: 100%;
@@ -193,7 +198,9 @@ input:focus-visible {
     align-items: start;
 }
 
-/* Área da roleta */
+/* ========================================
+   ÁREA DA ROLETA
+======================================== */
 
 .wheel-area {
     position: relative;
@@ -268,10 +275,8 @@ input:focus-visible {
 
 .wheel {
     position: relative;
-
     width: min(100%, 490px);
     aspect-ratio: 1 / 1;
-
     margin: 15px auto 20px;
 
     user-select: none;
@@ -438,7 +443,9 @@ input:focus-visible {
     cursor: default;
 }
 
-/* Botão central STOP! */
+/* ========================================
+   BOTÃO CENTRAL STOP!
+======================================== */
 
 .stop-button {
     position: absolute;
@@ -548,7 +555,9 @@ input:focus-visible {
     font-weight: 600;
 }
 
-/* Painel lateral */
+/* ========================================
+   PAINEL LATERAL
+======================================== */
 
 .game-panel {
     min-width: 0;
@@ -626,7 +635,9 @@ input:focus-visible {
     font-weight: 700;
 }
 
-/* Jogador da vez */
+/* ========================================
+   JOGADOR DA VEZ
+======================================== */
 
 .turn-section {
     display: flex;
@@ -699,7 +710,9 @@ input:focus-visible {
     color: var(--yellow);
 }
 
-/* Campo de resposta */
+/* ========================================
+   CAMPO DE RESPOSTA
+======================================== */
 
 .answer-panel {
     margin-bottom: 15px;
@@ -753,7 +766,9 @@ input:focus-visible {
     opacity: .5;
 }
 
-/* Comunicação por voz */
+/* ========================================
+   COMUNICAÇÃO POR VOZ
+======================================== */
 
 .voice-panel {
     padding: 12px;
@@ -797,7 +812,9 @@ input:focus-visible {
     opacity: .65;
 }
 
-/* Jogadores */
+/* ========================================
+   JOGADORES
+======================================== */
 
 .players-section {
     margin-bottom: 16px;
@@ -913,7 +930,9 @@ input:focus-visible {
     font-weight: 800;
 }
 
-/* Botões da partida */
+/* ========================================
+   BOTÕES DA PARTIDA
+======================================== */
 
 .game-actions {
     display: flex;
@@ -991,7 +1010,9 @@ input:focus-visible {
     line-height: 1.4;
 }
 
-/* Rodapé */
+/* ========================================
+   RODAPÉ
+======================================== */
 
 .game-footer {
     display: flex;
@@ -1084,6 +1105,7 @@ input:focus-visible {
     color: var(--white);
 
     /* Otimização: isolamento do layout do sorteio */
+
     contain: layout style;
 }
 
@@ -1112,7 +1134,9 @@ input:focus-visible {
     color: #edf2f7;
 }
 
-/* Baralho centralizado */
+/* ========================================
+   BARALHO CENTRALIZADO
+======================================== */
 
 .deck {
     position: relative;
@@ -1128,6 +1152,7 @@ input:focus-visible {
 }
 
 /* Brilho suave atrás das cartas */
+
 /* Otimização: gradiente radial sem filtro de blur */
 
 .deck::before {
@@ -1370,7 +1395,6 @@ input:focus-visible {
     50% {
         transform: translate(65px, -8px) rotate(17deg);
     }
-
 }
 
 @keyframes shuffle-left {
@@ -1383,7 +1407,6 @@ input:focus-visible {
     50% {
         transform: translate(-65px, -8px) rotate(-17deg);
     }
-
 }
 
 @keyframes shuffle-main {
@@ -1396,7 +1419,6 @@ input:focus-visible {
     50% {
         transform: translateY(-14px) rotate(-3deg);
     }
-
 }
 
 @keyframes overlay-in {
@@ -1408,7 +1430,6 @@ input:focus-visible {
     to {
         opacity: 1;
     }
-
 }
 
 /* Encerramento suave da sobreposição */
@@ -1426,11 +1447,10 @@ input:focus-visible {
     to {
         opacity: 0;
     }
-
 }
 
 /* ========================================
-   CONTESTAÇÃO E ENCERRAMENTO
+   CONTESTAÇÃO
 ======================================== */
 
 .modal-overlay {
@@ -1453,8 +1473,7 @@ input:focus-visible {
     -webkit-backdrop-filter: blur(5px);
 }
 
-.contest-modal,
-.round-end-modal {
+.contest-modal {
     width: 100%;
     max-width: 420px;
 
@@ -1471,8 +1490,7 @@ input:focus-visible {
     text-align: center;
 }
 
-.contest-modal h2,
-.round-end-modal h2 {
+.contest-modal h2 {
     margin: 10px 0 18px;
 
     font-family: 'Fredoka', sans-serif;
@@ -1539,33 +1557,764 @@ input:focus-visible {
     font-size: 12px;
 }
 
-/* Encerramento da rodada */
+/* ========================================
+   NOVO: VENCEDOR DA RODADA
+======================================== */
 
-.round-end-modal > p {
-    font-size: 14px;
+/*
+    A celebração utiliza uma sobreposição
+    de tela inteira.
+
+    O fundo é opaco para evitar processamento
+    desnecessário de desfoque em tempo real.
+
+    Todas as novas cores ficam isoladas
+    dentro desta tela.
+*/
+
+.round-winner-overlay {
+
+    --winner-blue: #1065a7;
+    --winner-blue-deep: #0e4b7d;
+    --winner-blue-text: #10548b;
+
+    --winner-cream: #fcf3da;
+    --winner-cream-light: #fff8e6;
+
+    --winner-red: #f5473e;
+    --winner-yellow: #ffda28;
+
+    position: fixed;
+    inset: 0;
+
+    z-index: 110;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    padding: 0;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    background: var(--winner-cream);
+    color: var(--winner-blue-text);
+
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+
+    animation: round-winner-entry .3s ease-out;
 }
 
-#round-end-player {
-    display: block;
+/* ========================================
+   ESTRUTURA DA CELEBRAÇÃO
+======================================== */
 
-    margin: 12px 0;
+.round-winner-modal {
+    position: relative;
+
+    z-index: 2;
+
+    width: 100%;
+    max-width: none;
+
+    min-height: 100vh;
+    min-height: 100dvh;
+
+    margin: 0;
+    padding: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    flex: 1;
+
+    background: transparent;
+    color: var(--winner-blue-text);
+
+    border-radius: 0;
+
+    box-shadow: none;
+
+    text-align: center;
+}
+
+/* ========================================
+   CABEÇALHO DO VENCEDOR
+======================================== */
+
+.round-winner-header {
+    position: relative;
+
+    z-index: 3;
+
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 15px;
+
+    padding: 24px 32px;
+}
+
+.round-winner-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 8px 15px;
+
+    background: var(--winner-red);
+    color: var(--winner-cream-light);
 
     font-family: 'Fredoka', sans-serif;
-    font-size: 26px;
+    font-size: 23px;
     font-weight: 700;
+
+    border-radius: 11px;
+
+    box-shadow: 0 4px 0 rgba(130, 35, 25, .25);
+
+    transform: rotate(4deg);
+}
+
+.round-winner-badge {
+    display: inline-flex;
+    align-items: center;
+
+    gap: 8px;
+
+    padding: 10px 18px;
+
+    background: #eee3c4;
+
+    color: var(--winner-blue-text);
+
+    border-radius: 30px;
+
+    font-size: 10px;
+    font-weight: 900;
+
+    white-space: nowrap;
+}
+
+.round-winner-dot {
+    display: block;
+
+    width: 8px;
+    height: 8px;
+
+    flex-shrink: 0;
+
+    background: var(--winner-red);
+
+    border-radius: 50%;
+}
+
+/* ========================================
+   CONTEÚDO DO VENCEDOR
+======================================== */
+
+.round-winner-content {
+    position: relative;
+
+    width: 100%;
+    max-width: 850px;
+
+    flex: 1;
+
+    margin: 0 auto;
+
+    padding: 10px 25px 20px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    text-align: center;
+}
+
+.round-winner-eyebrow {
+    color: var(--winner-red);
+
+    font-size: 11px;
+    font-weight: 900;
+
+    letter-spacing: 1px;
+}
+
+.round-winner-modal h2 {
+    margin: 12px 0 0;
+
+    font-family: 'Fredoka', sans-serif;
+    font-size: clamp(30px, 4vw, 48px);
+    font-weight: 700;
+
+    color: var(--winner-blue);
+
+    line-height: 1.1;
 
     overflow-wrap: anywhere;
 }
 
-.round-results {
-    margin: 15px 0;
+.round-winner-subtitle {
+    width: 100%;
+    max-width: 480px;
 
-    max-height: 220px;
-    overflow-y: auto;
+    margin: 10px 0 0;
+
+    color: var(--winner-blue-text);
+
+    font-size: 13px;
+    font-weight: 700;
+
+    line-height: 1.4;
+
+    overflow-wrap: anywhere;
 }
 
-.round-end-modal .primary-button {
+/* ========================================
+   MEDALHA DO VENCEDOR
+======================================== */
+
+.round-winner-medal {
+    position: relative;
+
+    margin: 16px 0;
+
+    font-size: 82px;
+    line-height: 1.1;
+
+    user-select: none;
+
+    animation:
+        round-medal-entry .55s ease-out both;
+}
+
+/* Estrelas decorativas próximas à medalha */
+
+.round-winner-medal::before,
+.round-winner-medal::after {
+    position: absolute;
+
+    content: "✦";
+
+    color: #e2b22c;
+
+    font-size: 22px;
+
+    line-height: 1;
+
+    pointer-events: none;
+}
+
+.round-winner-medal::before {
+    top: 10px;
+    left: -36px;
+
+    transform: rotate(-12deg);
+}
+
+.round-winner-medal::after {
+    right: -35px;
+    bottom: 10px;
+
+    transform: rotate(18deg);
+}
+
+/* ========================================
+   PERFIL DO VENCEDOR
+======================================== */
+
+.round-winner-profile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
     width: 100%;
+
+    min-width: 0;
+}
+
+.round-winner-avatar {
+    width: 100px;
+    height: 100px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: var(--winner-blue);
+
+    border: 7px solid var(--winner-yellow);
+    border-radius: 50%;
+
+    box-shadow:
+        0 0 0 4px #fff1a8,
+        0 6px 0 rgba(137, 106, 30, .18);
+}
+
+.round-winner-avatar span {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 52px;
+    font-weight: 700;
+
+    line-height: 1;
+
+    color: var(--winner-cream-light);
+}
+
+/* Nome preenchido pelo JavaScript */
+
+#round-end-player {
+    display: block;
+
+    max-width: 100%;
+
+    margin: 12px 0 0;
+
+    font-family: 'Fredoka', sans-serif;
+    font-size: clamp(28px, 4vw, 38px);
+    font-weight: 700;
+
+    color: var(--winner-blue);
+
+    line-height: 1.15;
+
+    overflow-wrap: anywhere;
+}
+
+/* Recompensa da rodada */
+
+.round-winner-reward {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-top: 8px;
+
+    padding: 7px 14px;
+
+    background: #ffedb1;
+
+    color: #855a06;
+
+    border-radius: 30px;
+
+    font-size: 11px;
+    font-weight: 900;
+
+    letter-spacing: .3px;
+}
+
+/* ========================================
+   PONTUAÇÃO DO VENCEDOR
+======================================== */
+
+.round-winner-stats {
+    width: 100%;
+    max-width: 390px;
+
+    margin-top: 20px;
+
+    padding: 17px 12px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: var(--winner-blue);
+
+    color: var(--winner-cream-light);
+
+    border-radius: 18px;
+
+    box-shadow:
+        0 4px 0 var(--winner-blue-deep);
+}
+
+.round-winner-stat {
+    flex: 1;
+
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    gap: 5px;
+
+    padding: 0 5px;
+}
+
+.round-winner-stat strong {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+
+    font-variant-numeric: tabular-nums;
+
+    color: var(--winner-yellow);
+
+    line-height: 1;
+}
+
+.round-winner-stat span {
+    font-size: 11px;
+    font-weight: 800;
+
+    line-height: 1.3;
+}
+
+.round-winner-stat-divider {
+    width: 1px;
+    height: 38px;
+
+    flex-shrink: 0;
+
+    background: rgba(255, 255, 255, .22);
+}
+
+/* ========================================
+   TEMA DISPUTADO
+======================================== */
+
+.round-winner-theme {
+    width: 100%;
+    max-width: 390px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    gap: 5px;
+
+    margin-top: 15px;
+    padding: 11px 15px;
+
+    background: #eee3c4;
+
+    border-radius: 12px;
+}
+
+.round-winner-theme > span {
+    font-size: 9px;
+    font-weight: 900;
+
+    letter-spacing: .7px;
+
+    color: var(--winner-blue-text);
+}
+
+.round-winner-theme strong {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 19px;
+    font-weight: 600;
+
+    color: var(--winner-blue);
+
+    overflow-wrap: anywhere;
+}
+
+/* ========================================
+   BOTÕES DE ENCERRAMENTO
+======================================== */
+
+.round-winner-actions {
+    width: 100%;
+    max-width: 290px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    gap: 12px;
+
+    margin-top: 25px;
+}
+
+.round-winner-modal .primary-button {
+    width: 100%;
+}
+
+.round-winner-button {
+    min-height: 51px;
+
+    padding: 14px 20px;
+
+    background: var(--winner-yellow);
+
+    color: var(--winner-blue-deep);
+
+    border: none;
+    border-radius: 14px;
+
+    box-shadow: 0 4px 0 #d8ae20;
+
+    font-size: 14px;
+    font-weight: 900;
+
+    transition:
+        transform .15s ease,
+        background .15s ease,
+        box-shadow .15s ease;
+}
+
+.round-winner-button:hover:not(:disabled) {
+    background: #ffe354;
+
+    transform: translateY(-2px);
+
+    box-shadow: 0 6px 0 #d8ae20;
+}
+
+.round-winner-button:active:not(:disabled) {
+    transform: translateY(3px);
+
+    box-shadow: 0 1px 0 #d8ae20;
+}
+
+.round-winner-button:focus-visible {
+    outline: 3px solid var(--winner-blue);
+
+    outline-offset: 5px;
+}
+
+.round-winner-button:disabled {
+    opacity: .55;
+}
+
+.round-winner-next {
+    max-width: 100%;
+
+    margin: 0;
+
+    color: var(--winner-blue-text);
+
+    font-size: 11px;
+    font-weight: 700;
+
+    line-height: 1.4;
+
+    overflow-wrap: anywhere;
+}
+
+/* ========================================
+   RODAPÉ DA CELEBRAÇÃO
+======================================== */
+
+.round-winner-footer {
+    width: 100%;
+
+    padding: 12px 20px 18px;
+
+    color: var(--winner-blue-text);
+
+    font-size: 10px;
+    font-weight: 800;
+
+    letter-spacing: .5px;
+
+    text-align: center;
+}
+
+/* ========================================
+   CONFETES DO VENCEDOR
+======================================== */
+
+/*
+    O JavaScript criará os elementos decorativos.
+
+    As animações executam apenas uma vez.
+    Não existe processamento contínuo.
+*/
+
+.round-confetti {
+    position: fixed;
+    inset: 0;
+
+    z-index: 1;
+
+    overflow: hidden;
+
+    pointer-events: none;
+}
+
+.round-confetti-piece {
+    position: absolute;
+
+    width: 11px;
+    height: 5px;
+
+    border-radius: 2px;
+
+    background: var(
+        --confetti-color,
+        #ffda28
+    );
+
+    transform: rotate(
+        var(--confetti-angle, 0deg)
+    );
+
+    animation:
+        round-confetti-entry .65s ease-out both;
+
+    animation-delay:
+        var(--confetti-delay, 0ms);
+}
+
+.round-confetti-star {
+    position: absolute;
+
+    font-size: 20px;
+
+    line-height: 1;
+
+    color: var(
+        --confetti-color,
+        #ffda28
+    );
+
+    animation:
+        round-confetti-entry .65s ease-out both;
+
+    animation-delay:
+        var(--confetti-delay, 0ms);
+}
+
+/* ========================================
+   ANIMAÇÕES DA CELEBRAÇÃO
+======================================== */
+
+@keyframes round-winner-entry {
+
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes round-medal-entry {
+
+    from {
+        opacity: 0;
+
+        transform:
+            translateY(15px)
+            scale(.8);
+    }
+
+    to {
+        opacity: 1;
+
+        transform:
+            translateY(0)
+            scale(1);
+    }
+}
+
+@keyframes round-confetti-entry {
+
+    from {
+        opacity: 0;
+
+        translate: 0 -15px;
+    }
+
+    to {
+        opacity: 1;
+
+        translate: 0 0;
+    }
+}
+
+/* ========================================
+   ESTADO DE EMPATE
+======================================== */
+
+/*
+    Preparação visual para a morte súbita.
+
+    O JavaScript ativará a classe
+    is-tiebreak quando necessário.
+
+    Nenhuma recompensa será apresentada
+    enquanto não houver um vencedor.
+*/
+
+.round-winner-overlay.is-tiebreak
+.round-winner-medal,
+
+.round-winner-overlay.is-tiebreak
+.round-winner-avatar,
+
+.round-winner-overlay.is-tiebreak
+.round-winner-reward,
+
+.round-winner-overlay.is-tiebreak
+.round-winner-stats,
+
+.round-winner-overlay.is-tiebreak
+.round-confetti {
+    display: none;
+}
+
+.round-winner-overlay.is-tiebreak
+.round-winner-eyebrow {
+    color: var(--winner-red);
+}
+
+.round-winner-overlay.is-tiebreak
+#round-end-player {
+    font-size: 26px;
+    margin-top: 20px;
+}
+
+/* ========================================
+   ESTADO SEM VENCEDOR
+======================================== */
+
+.round-winner-overlay.no-winner
+.round-winner-medal,
+
+.round-winner-overlay.no-winner
+.round-winner-avatar,
+
+.round-winner-overlay.no-winner
+.round-winner-reward,
+
+.round-winner-overlay.no-winner
+.round-winner-stats,
+
+.round-winner-overlay.no-winner
+.round-confetti {
+    display: none;
+}
+
+/* ========================================
+   RANKING INTERMEDIÁRIO DESATIVADO
+======================================== */
+
+/*
+    Mantido temporariamente para não gerar
+    erros no JavaScript anterior.
+
+    O ranking oficial será exibido apenas
+    no resultado.html.
+*/
+
+#round-results {
+    display: none !important;
 }
 
 /* ========================================
@@ -1596,9 +2345,9 @@ input:focus-visible {
     }
 
     .players-list {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns:
+            repeat(3, minmax(0, 1fr));
     }
-
 }
 
 @media (max-width: 760px) {
@@ -1687,7 +2436,8 @@ input:focus-visible {
     }
 
     .players-list {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns:
+            repeat(4, minmax(0, 1fr));
     }
 
     .game-footer {
@@ -1701,6 +2451,53 @@ input:focus-visible {
         font-size: 27px;
     }
 
+    /* Responsividade do vencedor */
+
+    .round-winner-header {
+        padding: 20px 17px;
+    }
+
+    .round-winner-logo {
+        font-size: 19px;
+    }
+
+    .round-winner-badge {
+        font-size: 9px;
+        padding: 9px 12px;
+    }
+
+    .round-winner-content {
+        padding: 20px 15px;
+    }
+
+    .round-winner-medal {
+        font-size: 72px;
+    }
+
+    .round-winner-avatar {
+        width: 88px;
+        height: 88px;
+
+        border-width: 6px;
+    }
+
+    .round-winner-avatar span {
+        font-size: 45px;
+    }
+
+    .round-winner-confetti-piece,
+    .round-confetti-piece {
+        width: 8px;
+        height: 4px;
+    }
+
+    .round-winner-stats {
+        max-width: 350px;
+    }
+
+    .round-winner-theme {
+        max-width: 350px;
+    }
 }
 
 @media (max-width: 380px) {
@@ -1715,7 +2512,8 @@ input:focus-visible {
     }
 
     .players-list {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns:
+            repeat(3, minmax(0, 1fr));
     }
 
     .deck {
@@ -1732,9 +2530,161 @@ input:focus-visible {
         font-size: 45px;
     }
 
+    /* Celebração em telas pequenas */
+
+    .round-winner-modal h2 {
+        font-size: 27px;
+    }
+
+    .round-winner-subtitle {
+        font-size: 12px;
+    }
+
+    .round-winner-stat span {
+        font-size: 10px;
+    }
+
+    .round-winner-button {
+        font-size: 12px;
+    }
+
+    .round-winner-eyebrow {
+        font-size: 9px;
+    }
 }
 
-/* Acessibilidade e redução de movimento */
+/* ========================================
+   TELAS COM ALTURA REDUZIDA
+======================================== */
+
+/*
+    Mantém o botão de próxima rodada
+    acessível em notebooks e monitores
+    com resoluções menores.
+*/
+
+@media (max-height: 800px) and (min-width: 761px) {
+
+    .round-winner-header {
+        padding: 16px 28px;
+    }
+
+    .round-winner-content {
+        padding: 8px 20px 12px;
+    }
+
+    .round-winner-modal h2 {
+        font-size: 39px;
+        margin-top: 8px;
+    }
+
+    .round-winner-subtitle {
+        margin-top: 8px;
+    }
+
+    .round-winner-medal {
+        font-size: 62px;
+
+        margin: 12px 0;
+    }
+
+    .round-winner-avatar {
+        width: 78px;
+        height: 78px;
+
+        border-width: 6px;
+    }
+
+    .round-winner-avatar span {
+        font-size: 42px;
+    }
+
+    #round-end-player {
+        font-size: 30px;
+        margin-top: 10px;
+    }
+
+    .round-winner-reward {
+        margin-top: 6px;
+        padding: 5px 12px;
+    }
+
+    .round-winner-stats {
+        margin-top: 15px;
+        padding: 13px 10px;
+    }
+
+    .round-winner-stat strong {
+        font-size: 28px;
+    }
+
+    .round-winner-theme {
+        margin-top: 12px;
+        padding: 8px 12px;
+    }
+
+    .round-winner-theme strong {
+        font-size: 17px;
+    }
+
+    .round-winner-actions {
+        margin-top: 19px;
+        gap: 10px;
+    }
+
+    .round-winner-button {
+        min-height: 46px;
+        font-size: 13px;
+    }
+
+    .round-winner-footer {
+        padding: 8px 20px 12px;
+    }
+}
+
+@media (max-height: 650px) and (min-width: 761px) {
+
+    .round-winner-header {
+        padding: 12px 22px;
+    }
+
+    .round-winner-modal h2 {
+        font-size: 33px;
+    }
+
+    .round-winner-medal {
+        font-size: 50px;
+        margin: 8px 0;
+    }
+
+    .round-winner-avatar {
+        width: 62px;
+        height: 62px;
+
+        border-width: 5px;
+    }
+
+    .round-winner-avatar span {
+        font-size: 34px;
+    }
+
+    #round-end-player {
+        font-size: 27px;
+    }
+
+    .round-winner-stats {
+        margin-top: 12px;
+        padding: 10px;
+    }
+
+    .round-winner-actions {
+        margin-top: 15px;
+    }
+}
+
+/* ========================================
+   ACESSIBILIDADE E REDUÇÃO DE MOVIMENTO
+======================================== */
 
 @media (prefers-reduced-motion: reduce) {
 
@@ -1744,5 +2694,4 @@ input:focus-visible {
         animation-duration: .01ms !important;
         transition-duration: .01ms !important;
     }
-
 }

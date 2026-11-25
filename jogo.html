@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -590,52 +589,208 @@
 
     </section>
 
-    <!-- Sobreposição de encerramento da rodada -->
+    <!-- ===================================== -->
+    <!-- VENCEDOR DA RODADA                    -->
+    <!-- ===================================== -->
+
     <section id="round-end-overlay"
-        class="modal-overlay"
+        class="modal-overlay round-winner-overlay"
         role="dialog"
         aria-modal="true"
         aria-labelledby="round-end-title"
+        aria-describedby="round-end-reason"
         hidden>
 
-        <div class="round-end-modal">
+        <!-- Confetes decorativos e leves -->
+        <div id="round-confetti"
+            class="round-confetti"
+            aria-hidden="true">
+        </div>
 
-            <span class="eyebrow">
-                FIM DA RODADA
-            </span>
+        <div class="round-end-modal round-winner-modal">
 
-            <h2 id="round-end-title">
-                STOP!
-            </h2>
+            <!-- Cabeçalho da celebração -->
+            <header class="round-winner-header">
 
-            <p id="round-end-reason">
-                Rodada encerrada.
-            </p>
+                <span class="round-winner-logo">
+                    STOP!
+                </span>
 
-            <strong id="round-end-player"></strong>
+                <span class="round-winner-badge">
 
-            <div id="round-results"
-                class="round-results">
+                    <span class="round-winner-dot"
+                        aria-hidden="true">
+                    </span>
+
+                    <span id="round-winner-number">
+                        RODADA 01/10
+                    </span>
+
+                </span>
+
+            </header>
+
+            <!-- Conteúdo principal -->
+            <div class="round-winner-content">
+
+                <span id="round-winner-eyebrow"
+                    class="round-winner-eyebrow">
+
+                    MAIS UMA CARTA CONQUISTADA!
+
+                </span>
+
+                <h2 id="round-end-title">
+                    VENCEDOR DA RODADA!
+                </h2>
+
+                <p id="round-end-reason"
+                    class="round-winner-subtitle">
+
+                    Essa rodada foi sua!
+
+                </p>
+
+                <!-- Medalha exclusiva da vitória da rodada -->
+                <div id="round-winner-medal"
+                    class="round-winner-medal"
+                    aria-hidden="true">
+
+                    🏅
+
+                </div>
+
+                <!-- Informações do vencedor -->
+                <div id="round-winner-profile"
+                    class="round-winner-profile">
+
+                    <div class="round-winner-avatar">
+
+                        <span id="round-winner-avatar">
+                            ?
+                        </span>
+
+                    </div>
+
+                    <strong id="round-end-player"
+                        class="round-winner-name">
+
+                        Vencedor
+
+                    </strong>
+
+                    <span id="round-winner-reward"
+                        class="round-winner-reward">
+
+                        +1 CARTA CONQUISTADA!
+
+                    </span>
+
+                </div>
+
+                <!-- Pontuação exclusiva do vencedor -->
+                <div id="round-winner-stats"
+                    class="round-winner-stats">
+
+                    <!-- Acertos na rodada atual -->
+                    <div class="round-winner-stat">
+
+                        <strong id="round-winner-hits">
+                            0
+                        </strong>
+
+                        <span>
+                            Acertos na rodada
+                        </span>
+
+                    </div>
+
+                    <div class="round-winner-stat-divider"
+                        aria-hidden="true">
+                    </div>
+
+                    <!-- Cartas acumuladas na partida -->
+                    <div class="round-winner-stat">
+
+                        <strong id="round-winner-cards">
+                            0
+                        </strong>
+
+                        <span>
+                            Cartas acumuladas
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <!-- Tema disputado -->
+                <div id="round-winner-theme-box"
+                    class="round-winner-theme">
+
+                    <span>TEMA DA RODADA</span>
+
+                    <strong id="round-winner-theme">
+                        —
+                    </strong>
+
+                </div>
+
+                <!--
+                    Estrutura reservada para compatibilidade
+                    temporária com o JavaScript anterior.
+
+                    O ranking completo será exibido exclusivamente
+                    no resultado final da partida.
+                -->
+                <div id="round-results"
+                    class="round-results"
+                    hidden>
+                </div>
+
+                <!-- Ações de encerramento -->
+                <div class="round-winner-actions">
+
+                    <!-- Próxima rodada -->
+                    <button type="button"
+                        id="next-round-button"
+                        class="primary-button round-winner-button"
+                        disabled>
+
+                        PRÓXIMA RODADA →
+
+                    </button>
+
+                    <!-- Resultado final após a última rodada -->
+                    <button type="button"
+                        id="finish-game-button"
+                        class="primary-button round-winner-button"
+                        disabled
+                        hidden>
+
+                        VER RESULTADO FINAL →
+
+                    </button>
+
+                    <!-- Identificação do próximo sorteio -->
+                    <p id="round-winner-next"
+                        class="round-winner-next"
+                        role="status">
+
+                        O vencedor realizará o próximo sorteio.
+
+                    </p>
+
+                </div>
+
             </div>
 
-            <button type="button"
-                id="next-round-button"
-                class="primary-button"
-                disabled>
+            <!-- Rodapé da celebração -->
+            <footer class="round-winner-footer">
 
-                PRÓXIMA RODADA →
+                UMA LETRA. MIL POSSIBILIDADES.
 
-            </button>
-
-            <button type="button"
-                id="finish-game-button"
-                class="primary-button"
-                disabled
-                hidden>
-
-                VER RESULTADOS →
-
-            </button>
+            </footer>
 
         </div>
 

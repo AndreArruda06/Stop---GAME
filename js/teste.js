@@ -34,7 +34,7 @@ function criarSalaTeste() {
 
         players: 4,
         time: 10,
-        cards: 10
+        cards: 1
 
     };
 
