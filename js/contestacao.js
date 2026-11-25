@@ -45,6 +45,7 @@
     };
 
     let intervalo = null;
+    let controleOnline = null;
 
     const respostasContestadas = new Set();
 
@@ -546,6 +547,8 @@
 
     function votarPelaInterface(voto) {
 
+        if (controleOnline) return controleOnline.votar(voto);
+
         const votante = obterVotanteAtual();
 
         if (!votante) {
@@ -589,6 +592,8 @@
     // ========================================
 
     function verificarCronometro() {
+
+        if (controleOnline) return;
 
         if (!estaVotando()) {
 
@@ -1360,6 +1365,8 @@
 
     function continuar() {
 
+        if (controleOnline) return controleOnline.continuar();
+
         if (!estado.ativa) {
 
             return false;
@@ -1402,6 +1409,8 @@
     // ========================================
 
     function limparVotacao() {
+
+        controleOnline = null;
 
         pararCronometro();
 
@@ -1635,6 +1644,49 @@
 
     }
 
+    // Interface online: somente o servidor define votos, prazo e resultado.
+    function sincronizarOnline(opcoes) {
+        if (!opcoes) {
+            if (controleOnline) { limparVotacao(); esconderInterface(); }
+            return;
+        }
+        const nova = !controleOnline || controleOnline.chave !== opcoes.chave;
+        const faseAnterior = estado.fase;
+        controleOnline = opcoes;
+        pararCronometro();
+        estado.ativa = true;
+        estado.fase = opcoes.resultado ? 'resultado' : 'votacao';
+        estado.resposta = { ...opcoes.resposta };
+        estado.contestador = { ...opcoes.contestador };
+        estado.eleitores = obterEleitores(estado.resposta, opcoes.jogadores);
+        estado.jogadorLocalId = opcoes.jogadorLocalId;
+        estado.modoTeste = false;
+        // Os marcadores públicos indicam apenas quem já votou, nunca a escolha.
+        estado.votos = new Map(opcoes.votaram.map(id => [id, 'registrado']));
+        estado.prazo = performance.now() + Math.max(0, opcoes.falta);
+        estado.tempoRestante = Math.ceil(Math.max(0, opcoes.falta) / 1000);
+        if (nova) mostrarInterface();
+        if (opcoes.resultado) {
+            const { validos, invalidos, rejeitada } = opcoes.resultado;
+            estado.resultado = {
+                validos, invalidos, rejeitada,
+                jogadorNome: estado.resposta.playerName,
+                abstencoes: estado.eleitores.length - validos - invalidos,
+                motivo: rejeitada ? 'A maioria considerou a resposta inválida.' : 'Não houve maioria suficiente para rejeitar.'
+            };
+            if (nova || faseAnterior !== 'resultado') mostrarResultado();
+            $('contestacao-continue').disabled = opcoes.ocupado;
+        } else {
+            estado.resultado = null;
+            atualizarCronometro();
+            atualizarProgresso();
+            atualizarInterfaceVotacao();
+            const bloqueado = opcoes.ocupado || opcoes.falta <= 0 || !obterVotanteAtual();
+            $('contestacao-vote-valid').disabled = bloqueado;
+            $('contestacao-vote-invalid').disabled = bloqueado;
+        }
+    }
+
     // ========================================
     // INTERFACE PÚBLICA DO MÓDULO
     // ========================================
@@ -1671,7 +1723,8 @@
 
         obterEstado,
 
-        configurarEventos
+        configurarEventos,
+        sincronizarOnline
 
     });
 
