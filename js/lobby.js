@@ -60,20 +60,37 @@ async function initializeOnlineLobby() {
     readyButton.disabled = true;
     copyCode.disabled = true;
     leaveButton.disabled = true;
+
     document.querySelectorAll('[data-target]').forEach(button => {
         button.disabled = true;
     });
+
     lobbyStatus.textContent = 'Carregando sala online...';
 
     try {
+
         if (typeof codigo !== 'string' || !/^[A-Z0-9]{6}$/.test(codigo)) {
             throw new Error('Código de sala inválido.');
         }
 
         const { database, autenticarJogador } = await import('./firebase-config.js');
-        const { ref, get, onValue, set, onDisconnect, push, query, orderByKey, limitToLast, serverTimestamp, update } = await import(
+
+        const {
+            ref,
+            get,
+            onValue,
+            set,
+            onDisconnect,
+            push,
+            query,
+            orderByKey,
+            limitToLast,
+            serverTimestamp,
+            update
+        } = await import(
             'https://www.gstatic.com/firebasejs/13.4.0/firebase-database.js'
         );
+
         const usuario = await autenticarJogador();
         const referencia = ref(database, `salas/${codigo}`);
 
@@ -84,162 +101,495 @@ async function initializeOnlineLobby() {
             throw new Error('Sala indisponível para este jogador.');
         }
 
-        const { sairSalaOnline, iniciarPartidaOnline } = await import('./salas-online.js');
+        const {
+            sairSalaOnline,
+            iniciarPartidaOnline
+        } = await import('./salas-online.js');
+
         if (sala.status === 'preparando') {
             window.location.replace('jogo.html');
             return;
         }
+
         let iniciandoNoServidor = false;
-        const presenca = ref(database, `salas/${codigo}/jogadores/${usuario.uid}/conectado`);
+
+        const presenca = ref(
+            database,
+            `salas/${codigo}/jogadores/${usuario.uid}/conectado`
+        );
+
         let conectado = false;
         let encerrando = false;
         let geracao = 0;
+
         let atualizarConexao = () => {};
         let pararSala = () => {};
         let pararPresenca = () => {};
         let pararChat = () => {};
+
         const chatRef = ref(database, `chats/${codigo}`);
 
+        // ========================================
+        // CONTROLE DA CALL
+        // ========================================
+
+        let vozInicializada = false;
+        let vozCarregando = false;
+
+        async function inicializarCallLobby() {
+
+            if (sala.modo !== 'com-call') return;
+
+            if (!conectado || encerrando) return;
+
+            if (vozInicializada || vozCarregando) return;
+
+            const microphoneButton =
+                document.getElementById('microphone-button');
+
+            const microphoneStatus =
+                document.getElementById('microphone-status');
+
+            const microphoneLabel =
+                document.getElementById('microphone-label');
+
+            if (!voicePanel || !microphoneButton) {
+
+                console.error(
+                    '[STOP! voz] Painel ou botão do microfone não encontrado.'
+                );
+
+                return;
+
+            }
+
+            vozCarregando = true;
+
+            voicePanel.hidden = false;
+            microphoneButton.disabled = true;
+
+            if (microphoneLabel) {
+                microphoneLabel.textContent = 'CARREGANDO CALL...';
+            }
+
+            if (microphoneStatus) {
+                microphoneStatus.textContent =
+                    'Preparando comunicação por voz...';
+            }
+
+            try {
+
+                const { iniciarVoz } = await import('./voz.js');
+
+                if (encerrando || !conectado) {
+
+                    vozCarregando = false;
+
+                    return;
+
+                }
+
+                if (typeof iniciarVoz !== 'function') {
+
+                    throw new Error(
+                        'A função iniciarVoz não foi encontrada.'
+                    );
+
+                }
+
+                iniciarVoz({
+                    database,
+                    ref,
+                    onValue,
+                    set,
+                    onDisconnect,
+                    serverTimestamp,
+                    codigo,
+                    uid: usuario.uid
+                });
+
+                vozInicializada = true;
+
+                console.info(
+                    '[STOP! voz] Módulo inicializado na sala de espera.'
+                );
+
+            } catch (erro) {
+
+                console.error(
+                    '[STOP! voz] Erro ao carregar a call:',
+                    erro
+                );
+
+                microphoneButton.disabled = true;
+
+                if (microphoneLabel) {
+
+                    microphoneLabel.textContent =
+                        'CALL INDISPONÍVEL';
+
+                }
+
+                if (microphoneStatus) {
+
+                    microphoneStatus.textContent =
+                        'Não foi possível carregar a call. Atualize a página.';
+
+                }
+
+            } finally {
+
+                vozCarregando = false;
+
+            }
+
+        }
+
+        // ========================================
+        // RETORNO PARA A LISTA DE SALAS
+        // ========================================
+
         function voltarParaSalas() {
+
             encerrando = true;
+
             pararSala();
             pararPresenca();
             pararChat();
+
             sessionStorage.removeItem('roomConfig');
             sessionStorage.removeItem('joinConfig');
-            window.location.replace(`salas.html?modo=${encodeURIComponent(roomConfig.mode)}`);
+
+            window.location.replace(
+                `salas.html?modo=${encodeURIComponent(roomConfig.mode)}`
+            );
+
         }
 
         const atualizarSala = initializeLobby({
+
             uid: usuario.uid,
+
             sala,
+
             estaConectado: () => conectado && !encerrando,
-            registrarAtualizacaoConexao: callback => { atualizarConexao = callback; },
+
+            registrarAtualizacaoConexao: callback => {
+                atualizarConexao = callback;
+            },
+
             sair: async () => {
-                if (!conectado || encerrando) throw new Error('Aguarde a reconexão para sair.');
+
+                if (!conectado || encerrando) {
+                    throw new Error('Aguarde a reconexão para sair.');
+                }
+
                 encerrando = true;
                 geracao++;
+
                 try {
+
                     if (sala.anfitriao === usuario.uid) {
+
                         // Exclui a sala e o chat em uma operação atômica.
                         await update(ref(database), {
                             [`salas/${codigo}`]: null,
                             [`chats/${codigo}`]: null
                         });
+
                     } else {
+
                         await sairSalaOnline(codigo);
+
                     }
+
                     voltarParaSalas();
+
                 } catch (erro) {
+
                     encerrando = false;
+
                     atualizarConexao();
+
                     throw erro;
+
                 }
+
             },
+
             iniciar: async () => {
-                if (!conectado || encerrando || iniciandoNoServidor) return;
+
+                if (
+                    !conectado ||
+                    encerrando ||
+                    iniciandoNoServidor
+                ) return;
+
                 iniciandoNoServidor = true;
+
                 try {
+
                     await iniciarPartidaOnline(codigo);
+
                     window.location.replace('jogo.html');
+
                 } finally {
+
                     iniciandoNoServidor = false;
+
                 }
+
             },
+
             enviarMensagem: texto => set(push(chatRef), {
+
                 uid: usuario.uid,
+
                 nickname: sala.jogadores[usuario.uid].nickname,
+
                 texto,
+
                 criadoEm: serverTimestamp()
+
             }),
+
             observarChat: (callback, erro) => {
-                pararChat = onValue(query(chatRef, orderByKey(), limitToLast(50)), callback, erro);
+
+                pararChat = onValue(
+                    query(chatRef, orderByKey(), limitToLast(50)),
+                    callback,
+                    erro
+                );
+
             },
+
             salvarConfiguracao: (campo, valor) => set(
-                ref(database, `salas/${codigo}/configuracoes/${campo}`),
+
+                ref(
+                    database,
+                    `salas/${codigo}/configuracoes/${campo}`
+                ),
+
                 valor
+
             ),
+
             salvarPronto: pronto => set(
-                ref(database, `salas/${codigo}/jogadores/${usuario.uid}/pronto`),
+
+                ref(
+                    database,
+                    `salas/${codigo}/jogadores/${usuario.uid}/pronto`
+                ),
+
                 pronto
+
             )
+
         });
+
         copyCode.disabled = false;
         leaveButton.disabled = false;
 
+        // Prepara a interface de voz enquanto o Firebase conecta.
+        if (sala.modo === 'com-call') {
+
+            const microphoneButton =
+                document.getElementById('microphone-button');
+
+            const microphoneLabel =
+                document.getElementById('microphone-label');
+
+            const microphoneStatus =
+                document.getElementById('microphone-status');
+
+            voicePanel.hidden = false;
+
+            if (microphoneButton) {
+                microphoneButton.disabled = true;
+            }
+
+            if (microphoneLabel) {
+                microphoneLabel.textContent = 'AGUARDANDO CONEXÃO';
+            }
+
+            if (microphoneStatus) {
+                microphoneStatus.textContent =
+                    'Aguardando conexão para disponibilizar a call.';
+            }
+
+        }
+
         pararSala = onValue(referencia, snapshotAtual => {
+
             if (encerrando) return;
+
             const salaAtual = snapshotAtual.val();
+
             if (!salaAtual || !salaAtual.jogadores?.[usuario.uid]) {
+
                 voltarParaSalas();
+
                 return;
+
             }
+
             if (salaAtual.status === 'preparando') {
+
                 // O anfitrião aguarda a confirmação da gravação antes de navegar.
-                if (!iniciandoNoServidor) window.location.replace('jogo.html');
+                if (!iniciandoNoServidor) {
+
+                    window.location.replace('jogo.html');
+
+                }
+
                 return;
+
             }
+
             atualizarSala(salaAtual);
+
         }, erro => {
-            console.error('[STOP!] Falha na sincronização:', erro);
-            lobbyStatus.textContent = 'Não foi possível atualizar a sala.';
-            document.querySelectorAll('[data-target]').forEach(button => { button.disabled = true; });
+
+            console.error(
+                '[STOP!] Falha na sincronização:',
+                erro
+            );
+
+            lobbyStatus.textContent =
+                'Não foi possível atualizar a sala.';
+
+            document.querySelectorAll('[data-target]').forEach(button => {
+                button.disabled = true;
+            });
+
             startButton.disabled = true;
             readyButton.disabled = true;
+
         });
 
         // O servidor marca a desconexão sem excluir a vaga.
-        pararPresenca = onValue(ref(database, '.info/connected'), async snapshotConexao => {
-            const tentativa = ++geracao;
-            conectado = false;
-            atualizarConexao();
-            if (encerrando || snapshotConexao.val() !== true) return;
-            try {
-                // Registra a ação antes de indicar presença online.
-                await onDisconnect(presenca).set(false);
-                if (encerrando || tentativa !== geracao) return;
-                await set(presenca, true);
-                if (encerrando || tentativa !== geracao) return;
-                conectado = true;
+        pararPresenca = onValue(
+            ref(database, '.info/connected'),
+            async snapshotConexao => {
+
+                const tentativa = ++geracao;
+
+                conectado = false;
+
                 atualizarConexao();
-            } catch (erro) {
-                console.error('[STOP!] Erro ao registrar presença:', erro);
-                lobbyStatus.textContent = 'Não foi possível registrar a conexão.';
+
+                if (
+                    encerrando ||
+                    snapshotConexao.val() !== true
+                ) return;
+
+                try {
+
+                    // Registra a ação antes de indicar presença online.
+                    await onDisconnect(presenca).set(false);
+
+                    if (
+                        encerrando ||
+                        tentativa !== geracao
+                    ) return;
+
+                    await set(presenca, true);
+
+                    if (
+                        encerrando ||
+                        tentativa !== geracao
+                    ) return;
+
+                    conectado = true;
+
+                    atualizarConexao();
+
+                    // Inicializa a call somente após confirmar
+                    // a presença do jogador no Firebase.
+                    inicializarCallLobby();
+
+                } catch (erro) {
+
+                    console.error(
+                        '[STOP!] Erro ao registrar presença:',
+                        erro
+                    );
+
+                    lobbyStatus.textContent =
+                        'Não foi possível registrar a conexão.';
+
+                }
+
             }
-        });
+        );
 
         // Não remove a sala nem o jogador ao atualizar a página.
         window.addEventListener('pagehide', () => {
+
+            encerrando = true;
+
             pararSala();
             pararPresenca();
             pararChat();
+
         }, { once: true });
+
         window.addEventListener('pageshow', evento => {
-            if (evento.persisted) window.location.reload();
+
+            if (evento.persisted) {
+
+                window.location.reload();
+
+            }
+
         });
 
     } catch (erro) {
-        console.error('[STOP!] Erro ao carregar sala:', erro);
-        lobbyStatus.textContent = 'Não foi possível carregar a sala online.';
+
+        console.error(
+            '[STOP!] Erro ao carregar sala:',
+            erro
+        );
+
+        lobbyStatus.textContent =
+            'Não foi possível carregar a sala online.';
+
         leaveButton.disabled = false;
+
         leaveButton.addEventListener('click', () => {
+
             sessionStorage.removeItem('roomConfig');
-            window.location.href = `salas.html?modo=${encodeURIComponent(roomConfig.mode)}`;
+
+            window.location.href =
+                `salas.html?modo=${encodeURIComponent(roomConfig.mode)}`;
+
         }, { once: true });
+
     }
+
 }
 
 function initializeLobby(online = null) {
 
     const isOnline = online !== null;
+
     let saindoSala = false;
     let iniciandoPartida = false;
     let salvandoPronto = false;
     let salvandoConfiguracao = false;
-    const camposOnline = { players: "maxJogadores", time: "tempo", cards: "quantidadeCartas" };
-    let statusSala = isOnline ? online.sala.status : 'aguardando';
+
+    const camposOnline = {
+        players: "maxJogadores",
+        time: "tempo",
+        cards: "quantidadeCartas"
+    };
+
+    let statusSala = isOnline
+        ? online.sala.status
+        : 'aguardando';
 
     function sincronizarConfig(sala) {
+
         roomConfig.roomName = sala.nome;
         roomConfig.mode = sala.modo;
         roomConfig.privacy = sala.privacidade;
@@ -250,16 +600,24 @@ function initializeLobby(online = null) {
         roomConfig.hostId = sala.anfitriao;
         roomConfig.isHost = sala.anfitriao === online.uid;
         roomConfig.nickname = sala.jogadores[online.uid].nickname;
-        sessionStorage.setItem('roomConfig', JSON.stringify(roomConfig));
+
+        sessionStorage.setItem(
+            'roomConfig',
+            JSON.stringify(roomConfig)
+        );
+
     }
 
     if (isOnline) sincronizarConfig(online.sala);
 
     // Identifica o papel do participante
-    let isHost = isOnline ? online.sala.anfitriao === online.uid : !guestTest;
+    let isHost = isOnline
+        ? online.sala.anfitriao === online.uid
+        : !guestTest;
 
     // Configurações e limites
     const settings = {
+
         players: {
             value: roomConfig.players,
             min: 2,
@@ -277,6 +635,7 @@ function initializeLobby(online = null) {
             min: 1,
             max: 26
         }
+
     };
 
     // Valida as configurações recuperadas
@@ -296,7 +655,8 @@ function initializeLobby(online = null) {
     // Gera um código provisório para testes locais
     function generateRoomCode() {
 
-        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        const characters =
+            'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
         let code = '';
 
@@ -327,14 +687,16 @@ function initializeLobby(online = null) {
     }
 
     // Jogadores presentes na sala local
-    const players = isOnline ? converterJogadores(online.sala) : [
-        {
-            id: 'host',
-            nickname: roomConfig.nickname,
-            host: true,
-            ready: true
-        }
-    ];
+    const players = isOnline
+        ? converterJogadores(online.sala)
+        : [
+            {
+                id: 'host',
+                nickname: roomConfig.nickname,
+                host: true,
+                ready: true
+            }
+        ];
 
     // Identificação do jogador atual
     const currentPlayerId = isOnline
@@ -344,14 +706,28 @@ function initializeLobby(online = null) {
             : 'guest-test';
 
     function converterJogadores(sala) {
-        return Object.entries(sala.jogadores || {}).map(([id, jogador]) => ({
-            id,
-            nickname: jogador.nickname,
-            host: id === sala.anfitriao,
-            ready: jogador.pronto === true,
-            connected: jogador.conectado === true,
-            vaga: jogador.vaga
-        })).sort((a, b) => Number(b.host) - Number(a.host) || (a.vaga || 0) - (b.vaga || 0));
+
+        return Object.entries(sala.jogadores || {})
+            .map(([id, jogador]) => ({
+
+                id,
+
+                nickname: jogador.nickname,
+
+                host: id === sala.anfitriao,
+
+                ready: jogador.pronto === true,
+
+                connected: jogador.conectado === true,
+
+                vaga: jogador.vaga
+
+            }))
+            .sort((a, b) =>
+                Number(b.host) - Number(a.host) ||
+                (a.vaga || 0) - (b.vaga || 0)
+            );
+
     }
 
     // Participante fictício exclusivo do modo de teste
@@ -431,15 +807,19 @@ function initializeLobby(online = null) {
         settingsMessage.replaceChildren();
 
         if (lockIcon) {
+
             settingsMessage.appendChild(lockIcon);
+
         }
 
         settingsMessage.append(
+
             document.createTextNode(
                 isHost
                     ? 'Só você pode editar.'
                     : 'Somente o anfitrião pode editar.'
             )
+
         );
 
         // Identifica explicitamente a simulação local
@@ -493,15 +873,32 @@ function initializeLobby(online = null) {
                 const setting = settings[target];
 
                 const minimum = target === 'players'
-                    ? Math.max(setting.min, players.length, ...players.map(player => player.vaga || 0))
+                    ? Math.max(
+                        setting.min,
+                        players.length,
+                        ...players.map(player => player.vaga || 0)
+                    )
                     : setting.min;
 
                 const nextValue = setting.value + step;
 
                 button.disabled =
-                    (isOnline && (salvandoConfiguracao || iniciandoPartida || saindoSala || !online.estaConectado() || statusSala !== 'aguardando')) ||
+
+                    (
+                        isOnline &&
+                        (
+                            salvandoConfiguracao ||
+                            iniciandoPartida ||
+                            saindoSala ||
+                            !online.estaConectado() ||
+                            statusSala !== 'aguardando'
+                        )
+                    ) ||
+
                     !isHost ||
+
                     nextValue < minimum ||
+
                     nextValue > setting.max;
 
             });
@@ -559,9 +956,15 @@ function initializeLobby(online = null) {
 
         status.textContent = isOnline && !player.connected
             ? 'Desconectado'
-            : player.ready ? 'Pronto' : 'Aguardando';
+            : player.ready
+                ? 'Pronto'
+                : 'Aguardando';
 
-        if (isOnline && !player.connected) status.className = 'player-status waiting';
+        if (isOnline && !player.connected) {
+
+            status.className = 'player-status waiting';
+
+        }
 
         row.appendChild(status);
 
@@ -621,9 +1024,13 @@ function initializeLobby(online = null) {
             `${players.length}/${settings.players.value}`;
 
         const connectedText = isOnline
+
             ? `${players.filter(player => player.connected).length} conectados`
+
             : players.length === 1
+
                 ? '1 conectado'
+
                 : `${players.length} conectados`;
 
         const availableText = availableSlots === 1
@@ -634,7 +1041,12 @@ function initializeLobby(online = null) {
             `${connectedText} • ${availableText}`;
 
         document.getElementById('chat-online').textContent =
-            isOnline ? `${players.filter(player => player.connected).length} online` : `${players.length} local`;
+
+            isOnline
+
+                ? `${players.filter(player => player.connected).length} online`
+
+                : `${players.length} local`;
 
         playersList.scrollTop = scrollPosition;
 
@@ -702,14 +1114,28 @@ function initializeLobby(online = null) {
         const enoughPlayers = players.length >= 2;
 
         const everyoneReady = players.every(
-            player => player.ready && (!isOnline || player.connected)
+            player => player.ready &&
+                (!isOnline || player.connected)
         );
 
         // Estado do anfitrião
         startButton.disabled =
-            (isOnline && (iniciandoPartida || saindoSala || salvandoConfiguracao || !online.estaConectado() || statusSala !== 'aguardando')) ||
+
+            (
+                isOnline &&
+                (
+                    iniciandoPartida ||
+                    saindoSala ||
+                    salvandoConfiguracao ||
+                    !online.estaConectado() ||
+                    statusSala !== 'aguardando'
+                )
+            ) ||
+
             !isHost ||
+
             !enoughPlayers ||
+
             !everyoneReady;
 
         if (isHost) {
@@ -770,18 +1196,59 @@ function initializeLobby(online = null) {
         updateReadyButton();
 
         if (isOnline) {
-            readyButton.disabled = isHost || salvandoPronto || saindoSala || !online.estaConectado() || !currentPlayer || statusSala !== 'aguardando';
-            leaveButton.disabled = saindoSala || iniciandoPartida || !online.estaConectado();
+
+            readyButton.disabled =
+
+                isHost ||
+
+                salvandoPronto ||
+
+                saindoSala ||
+
+                !online.estaConectado() ||
+
+                !currentPlayer ||
+
+                statusSala !== 'aguardando';
+
+            leaveButton.disabled =
+
+                saindoSala ||
+
+                iniciandoPartida ||
+
+                !online.estaConectado();
+
             if (isHost && enoughPlayers && everyoneReady) {
-                lobbyStatus.textContent = 'Todos prontos! O anfitrião pode iniciar a preparação.';
+
+                lobbyStatus.textContent =
+                    'Todos prontos! O anfitrião pode iniciar a preparação.';
+
             }
+
             if (!online.estaConectado()) {
-                lobbyStatus.textContent = 'Conexão indisponível. Aguardando reconexão...';
-            } else if (players.some(player => player.host && !player.connected)) {
-                lobbyStatus.textContent = 'Anfitrião desconectado. Aguardando reconexão...';
-            } else if (players.some(player => !player.connected)) {
-                lobbyStatus.textContent = 'Há jogadores desconectados. As vagas continuam reservadas.';
+
+                lobbyStatus.textContent =
+                    'Conexão indisponível. Aguardando reconexão...';
+
+            } else if (
+                players.some(
+                    player => player.host && !player.connected
+                )
+            ) {
+
+                lobbyStatus.textContent =
+                    'Anfitrião desconectado. Aguardando reconexão...';
+
+            } else if (
+                players.some(player => !player.connected)
+            ) {
+
+                lobbyStatus.textContent =
+                    'Há jogadores desconectados. As vagas continuam reservadas.';
+
             }
+
         }
 
     }
@@ -793,8 +1260,27 @@ function initializeLobby(online = null) {
             button.addEventListener('click', async () => {
 
                 // Impede alterações feitas por convidados
-                if (!isHost || button.disabled || (isOnline && (salvandoConfiguracao || iniciandoPartida || saindoSala || !online.estaConectado() || statusSala !== 'aguardando'))) {
+                if (
+
+                    !isHost ||
+
+                    button.disabled ||
+
+                    (
+                        isOnline &&
+                        (
+                            salvandoConfiguracao ||
+                            iniciandoPartida ||
+                            saindoSala ||
+                            !online.estaConectado() ||
+                            statusSala !== 'aguardando'
+                        )
+                    )
+
+                ) {
+
                     return;
+
                 }
 
                 const target = button.dataset.target;
@@ -803,34 +1289,64 @@ function initializeLobby(online = null) {
                 const setting = settings[target];
 
                 const minimum = target === 'players'
-                    ? Math.max(setting.min, players.length, ...players.map(player => player.vaga || 0))
+
+                    ? Math.max(
+                        setting.min,
+                        players.length,
+                        ...players.map(player => player.vaga || 0)
+                    )
+
                     : setting.min;
 
                 const nextValue = setting.value + step;
 
                 if (
+
                     nextValue >= minimum &&
+
                     nextValue <= setting.max
+
                 ) {
 
                     if (isOnline) {
+
                         salvandoConfiguracao = true;
+
                         updateSettings();
+
                         try {
-                            await online.salvarConfiguracao(camposOnline[target], nextValue);
+
+                            await online.salvarConfiguracao(
+                                camposOnline[target],
+                                nextValue
+                            );
+
                         } catch (erro) {
-                            console.error('[STOP!] Erro ao salvar configuração:', erro);
-                            lobbyStatus.textContent = 'Não foi possível alterar a configuração. Tente novamente.';
+
+                            console.error(
+                                '[STOP!] Erro ao salvar configuração:',
+                                erro
+                            );
+
+                            lobbyStatus.textContent =
+                                'Não foi possível alterar a configuração. Tente novamente.';
+
                         } finally {
+
                             salvandoConfiguracao = false;
+
                             updateSettings();
+
                         }
+
                         return;
+
                     }
 
                     setting.value = nextValue;
 
                     updateSettings();
+
                     renderPlayers();
 
                 }
@@ -842,24 +1358,60 @@ function initializeLobby(online = null) {
     // Confirmação de presença do convidado
     readyButton.addEventListener('click', async () => {
 
-        if (isHost || !currentPlayer || salvandoPronto) {
+        if (
+            isHost ||
+            !currentPlayer ||
+            salvandoPronto
+        ) {
+
             return;
+
         }
 
         if (isOnline) {
-            if (statusSala !== 'aguardando' || readyButton.disabled) return;
+
+            if (
+                statusSala !== 'aguardando' ||
+                readyButton.disabled
+            ) return;
+
             salvandoPronto = true;
             readyButton.disabled = true;
+
             try {
+
                 await online.salvarPronto(!currentPlayer.ready);
+
             } catch (erro) {
-                console.error('[STOP!] Erro ao confirmar presença:', erro);
-                lobbyStatus.textContent = 'Não foi possível atualizar sua confirmação. Tente novamente.';
+
+                console.error(
+                    '[STOP!] Erro ao confirmar presença:',
+                    erro
+                );
+
+                lobbyStatus.textContent =
+                    'Não foi possível atualizar sua confirmação. Tente novamente.';
+
             } finally {
+
                 salvandoPronto = false;
-                readyButton.disabled = isHost || saindoSala || !online.estaConectado() || statusSala !== 'aguardando' || !currentPlayer;
+
+                readyButton.disabled =
+
+                    isHost ||
+
+                    saindoSala ||
+
+                    !online.estaConectado() ||
+
+                    statusSala !== 'aguardando' ||
+
+                    !currentPlayer;
+
             }
+
             return;
+
         }
 
         // Alterna entre pronto e aguardando
@@ -902,25 +1454,47 @@ function initializeLobby(online = null) {
     // Iniciar partida
     startButton.addEventListener('click', async () => {
 
-        if (!isHost || startButton.disabled || iniciandoPartida) return;
+        if (
+            !isHost ||
+            startButton.disabled ||
+            iniciandoPartida
+        ) return;
 
         if (!isOnline) {
+
             lobbyStatus.textContent = 'Modo de teste local.';
+
             return;
+
         }
 
         iniciandoPartida = true;
+
         updateSettings();
         updateLobbyStatus();
-        lobbyStatus.textContent = 'Iniciando preparação da partida...';
+
+        lobbyStatus.textContent =
+            'Iniciando preparação da partida...';
+
         try {
+
             await online.iniciar();
+
         } catch (erro) {
-            console.error('[STOP!] Erro ao iniciar:', erro);
+
+            console.error(
+                '[STOP!] Erro ao iniciar:',
+                erro
+            );
+
             iniciandoPartida = false;
+
             updateSettings();
             updateLobbyStatus();
-            lobbyStatus.textContent = 'Não foi possível iniciar. Confira se todos estão prontos e conectados.';
+
+            lobbyStatus.textContent =
+                'Não foi possível iniciar. Confira se todos estão prontos e conectados.';
+
         }
 
     });
@@ -929,22 +1503,49 @@ function initializeLobby(online = null) {
     leaveButton.addEventListener('click', async () => {
 
         if (isOnline) {
-            if (saindoSala || iniciandoPartida || !online.estaConectado()) return;
+
+            if (
+
+                saindoSala ||
+
+                iniciandoPartida ||
+
+                !online.estaConectado()
+
+            ) return;
+
             saindoSala = true;
+
             atualizarChat();
+
             updateSettings();
             updateLobbyStatus();
+
             try {
+
                 await online.sair();
+
             } catch (erro) {
-                console.error('[STOP!] Erro ao sair:', erro);
+
+                console.error(
+                    '[STOP!] Erro ao sair:',
+                    erro
+                );
+
                 saindoSala = false;
+
                 atualizarChat();
+
                 updateSettings();
                 updateLobbyStatus();
-                lobbyStatus.textContent = 'Não foi possível sair da sala. Tente novamente.';
+
+                lobbyStatus.textContent =
+                    'Não foi possível sair da sala. Tente novamente.';
+
             }
+
             return;
+
         }
 
         // Encerra somente a simulação do convidado
@@ -964,122 +1565,289 @@ function initializeLobby(online = null) {
 
     });
 
-    // Chat online do lobby (somente SEM CALL).
+    // ========================================
+    // CHAT ONLINE DO LOBBY (SOMENTE SEM CALL)
+    // ========================================
+
     const chatForm = document.getElementById('chat-form');
     const chatInput = document.getElementById('chat-input');
     const sendMessage = document.getElementById('send-message');
     const chatMessages = document.getElementById('chat-messages');
+
     let enviandoMensagem = false;
     let chatCarregado = false;
     let ultimoEnvio = 0;
     let cooldownChat = null;
+
     const chatNote = document.createElement('p');
+
     chatNote.className = 'communication-note';
     chatNote.setAttribute('role', 'status');
+
     chatForm.after(chatNote);
 
     function atualizarChat() {
-        const permitido = isOnline && roomConfig.mode === 'sem-call' &&
-            chatCarregado && online.estaConectado() && !saindoSala &&
+
+        const permitido =
+
+            isOnline &&
+
+            roomConfig.mode === 'sem-call' &&
+
+            chatCarregado &&
+
+            online.estaConectado() &&
+
+            !saindoSala &&
+
             statusSala === 'aguardando';
-        chatInput.disabled = !permitido || enviandoMensagem;
-        sendMessage.disabled = !permitido || enviandoMensagem ||
-            !chatInput.value.trim() || chatInput.value.trim().length > 200 ||
+
+        chatInput.disabled =
+            !permitido || enviandoMensagem;
+
+        sendMessage.disabled =
+
+            !permitido ||
+
+            enviandoMensagem ||
+
+            !chatInput.value.trim() ||
+
+            chatInput.value.trim().length > 200 ||
+
             Date.now() - ultimoEnvio < 1000;
+
     }
 
     function renderChat(snapshot) {
-        const pertoDoFim = chatMessages.scrollHeight - chatMessages.scrollTop -
+
+        const pertoDoFim =
+
+            chatMessages.scrollHeight -
+
+            chatMessages.scrollTop -
+
             chatMessages.clientHeight < 40;
+
         const primeiro = !chatCarregado;
-        const fragmento = document.createDocumentFragment();
+
+        const fragmento =
+            document.createDocumentFragment();
+
         snapshot.forEach(item => {
+
             const mensagem = item.val();
-            const linha = document.createElement('p');
-            linha.style.cssText = 'margin:0 0 8px; overflow-wrap:anywhere; white-space:pre-wrap;';
-            const autor = document.createElement('strong');
+
+            const linha =
+                document.createElement('p');
+
+            linha.style.cssText =
+                'margin:0 0 8px; overflow-wrap:anywhere; white-space:pre-wrap;';
+
+            const autor =
+                document.createElement('strong');
+
             autor.textContent = mensagem.uid === currentPlayerId
-                ? `${mensagem.nickname} (você): ` : `${mensagem.nickname}: `;
-            linha.append(autor, document.createTextNode(mensagem.texto));
+
+                ? `${mensagem.nickname} (você): `
+
+                : `${mensagem.nickname}: `;
+
+            linha.append(
+                autor,
+                document.createTextNode(mensagem.texto)
+            );
+
             fragmento.appendChild(linha);
+
         });
+
         if (!snapshot.exists()) {
-            const vazio = document.createElement('p');
+
+            const vazio =
+                document.createElement('p');
+
             vazio.className = 'chat-empty';
-            vazio.textContent = 'Nenhuma mensagem ainda. Dê um oi para a turma!';
+
+            vazio.textContent =
+                'Nenhuma mensagem ainda. Dê um oi para a turma!';
+
             fragmento.appendChild(vazio);
+
         }
+
         chatMessages.replaceChildren(fragmento);
-        if (primeiro || pertoDoFim) chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        if (primeiro || pertoDoFim) {
+
+            chatMessages.scrollTop =
+                chatMessages.scrollHeight;
+
+        }
+
         chatCarregado = true;
+
         atualizarChat();
+
     }
 
-    chatInput.addEventListener('input', atualizarChat);
+    chatInput.addEventListener(
+        'input',
+        atualizarChat
+    );
+
     chatForm.addEventListener('submit', async event => {
+
         event.preventDefault();
+
         atualizarChat();
+
         if (sendMessage.disabled) return;
+
         const texto = chatInput.value.trim();
+
         enviandoMensagem = true;
+
         atualizarChat();
+
         chatNote.textContent = '';
+
         try {
+
             await online.enviarMensagem(texto);
+
             chatInput.value = '';
+
             ultimoEnvio = Date.now();
+
             clearTimeout(cooldownChat);
-            cooldownChat = setTimeout(atualizarChat, 1000);
+
+            cooldownChat = setTimeout(
+                atualizarChat,
+                1000
+            );
+
         } catch (erro) {
-            console.error('[STOP!] Erro no chat:', erro);
-            chatNote.textContent = 'Não foi possível enviar. Tente novamente.';
+
+            console.error(
+                '[STOP!] Erro no chat:',
+                erro
+            );
+
+            chatNote.textContent =
+                'Não foi possível enviar. Tente novamente.';
+
         } finally {
+
             enviandoMensagem = false;
+
             atualizarChat();
-            if (!chatInput.disabled) chatInput.focus();
+
+            if (!chatInput.disabled) {
+
+                chatInput.focus();
+
+            }
+
         }
+
     });
 
     if (isOnline && roomConfig.mode === 'sem-call') {
+
         online.observarChat(renderChat, erro => {
-            console.error('[STOP!] Erro ao consultar chat:', erro);
+
+            console.error(
+                '[STOP!] Erro ao consultar chat:',
+                erro
+            );
+
             chatCarregado = false;
+
             atualizarChat();
-            chatNote.textContent = 'Chat indisponível. Recarregue a página.';
+
+            chatNote.textContent =
+                'Chat indisponível. Recarregue a página.';
+
         });
+
     }
+
     atualizarChat();
 
-    // Inicialização
+    // ========================================
+    // INICIALIZAÇÃO
+    // ========================================
+
     updateRole();
     updateSettings();
     renderPlayers();
 
-    if (isOnline) online.registrarAtualizacaoConexao(() => {
-        updateSettings();
-        updateLobbyStatus();
-        atualizarChat();
-    });
+    if (isOnline) {
 
-    // Atualiza a interface com os dados reais, sem registrar eventos duplicados.
+        online.registrarAtualizacaoConexao(() => {
+
+            updateSettings();
+            updateLobbyStatus();
+            atualizarChat();
+
+        });
+
+    }
+
+    // Atualiza a interface com os dados reais,
+    // sem registrar eventos duplicados.
     return function atualizarSala(sala) {
+
         if (!isOnline) return;
+
         sincronizarConfig(sala);
+
         statusSala = sala.status;
+
         isHost = sala.anfitriao === currentPlayerId;
-        players.splice(0, players.length, ...converterJogadores(sala));
-        currentPlayer = players.find(player => player.id === currentPlayerId);
-        settings.players.value = roomConfig.players;
-        settings.time.value = roomConfig.time;
-        settings.cards.value = roomConfig.cards;
-        roomName.textContent = roomConfig.roomName;
-        roomMode.textContent = roomConfig.mode === 'com-call' ? '🎙 COM CALL' : '▤ SEM CALL';
-        voicePanel.hidden = roomConfig.mode !== 'com-call';
-        chatPanel.hidden = roomConfig.mode === 'com-call';
+
+        players.splice(
+            0,
+            players.length,
+            ...converterJogadores(sala)
+        );
+
+        currentPlayer = players.find(
+            player => player.id === currentPlayerId
+        );
+
+        settings.players.value =
+            roomConfig.players;
+
+        settings.time.value =
+            roomConfig.time;
+
+        settings.cards.value =
+            roomConfig.cards;
+
+        roomName.textContent =
+            roomConfig.roomName;
+
+        roomMode.textContent =
+            roomConfig.mode === 'com-call'
+                ? '🎙 COM CALL'
+                : '▤ SEM CALL';
+
+        voicePanel.hidden =
+            roomConfig.mode !== 'com-call';
+
+        chatPanel.hidden =
+            roomConfig.mode === 'com-call';
+
         updateRole();
+
         updateSettings();
+
         renderPlayers();
+
         atualizarChat();
+
     };
 
 }

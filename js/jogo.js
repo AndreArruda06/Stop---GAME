@@ -6049,6 +6049,15 @@
             receberRodadasOnline(preparacaoOnline.sala, true);
             if (matchFinished) return;
             const { database, ref, onValue, set, onDisconnect, referencia, uid } = preparacaoOnline;
+            // Call opcional, independente da mecânica e da pontuação.
+            if (config.mode === 'com-call') {
+                import('./voz.js').then(({ iniciarVoz }) => {
+                    if (!matchFinished) iniciarVoz({ ...preparacaoOnline, codigo: config.roomCode });
+                }).catch(erro => {
+                    console.warn('[STOP!] Falha ao carregar voz:', erro);
+                    $('speaker-status').textContent = 'Call indisponível. A partida continua normalmente.';
+                });
+            }
             const presenca = ref(database, `salas/${config.roomCode}/jogadores/${uid}/conectado`);
             let geracaoPresenca = 0;
             let saindo = false;
